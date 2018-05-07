@@ -57,14 +57,14 @@ $app->post('/register', function (Request $request, Response $response) {
 
         if ($result == USER_CREATED) {
             $responseData['error'] = false;
-            $responseData['message'] = 'Registered successfully';
+            $responseData['message'] = 'Registro exitoso';
             $responseData['user'] = $db->getUserByEmail($email);
         } elseif ($result == USER_CREATION_FAILED) {
             $responseData['error'] = true;
-            $responseData['message'] = 'Some error occurred';
+            $responseData['message'] = 'Ocurrio un error';
         } elseif ($result == USER_EXIST) {
             $responseData['error'] = true;
-            $responseData['message'] = 'This email already exist, please login';
+            $responseData['message'] = 'Este correo ya existe, por favor inicia sesión';
         }
 
         $response->getBody()->write(json_encode($responseData));
@@ -87,7 +87,7 @@ $app->post('/login', function (Request $request, Response $response) {
             $responseData['user'] = $db->getUserByEmail($email);
         } else {
             $responseData['error'] = true;
-            $responseData['message'] = 'Invalid email or password';
+            $responseData['message'] = 'Email o password inválidos';
         }
 
         $response->getBody()->write(json_encode($responseData));
@@ -106,7 +106,15 @@ $app->get('/messages/{id}', function (Request $request, Response $response) {
     $userid = $request->getAttribute('id');
     $db = new DbOperation();
     $messages = $db->getMessages($userid);
+
+
+    // $foaf = new EasyRdf_Graph("http://njh.me/foaf.rdf");
+    // $foaf->load();
+    // $me = $foaf->primaryTopic();
+    // echo "My name is: ".$me->get('foaf:name')."\n";
+
     $response->getBody()->write(json_encode(array("messages" => $messages)));
+    // $response->getBody()->write("My name is: " . $me->get('foaf:name')."\n");
 });
 
 //updating a user
@@ -128,11 +136,11 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
 
         if ($db->updateProfile($id, $name, $email, $password, $gender)) {
             $responseData['error'] = false;
-            $responseData['message'] = 'Updated successfully';
+            $responseData['message'] = 'Actualización exitosa';
             $responseData['user'] = $db->getUserByEmail($email);
         } else {
             $responseData['error'] = true;
-            $responseData['message'] = 'Not updated';
+            $responseData['message'] = 'No se actualizó';
         }
 
         $response->getBody()->write(json_encode($responseData));
@@ -155,10 +163,10 @@ $app->post('/sendmessage', function (Request $request, Response $response) {
 
         if ($db->sendMessage($from, $to, $title, $message)) {
             $responseData['error'] = false;
-            $responseData['message'] = 'Message sent successfully';
+            $responseData['message'] = 'Mensaje enviado';
         } else {
             $responseData['error'] = true;
-            $responseData['message'] = 'Could not send message';
+            $responseData['message'] = 'No se pudo enviar el mensaje';
         }
 
         $response->getBody()->write(json_encode($responseData));
@@ -182,7 +190,7 @@ function isTheseParametersAvailable($required_fields)
     if ($error) {
         $response = array();
         $response["error"] = true;
-        $response["message"] = 'Required field(s) ' . substr($error_fields, 0, -2) . ' is missing or empty';
+        $response["message"] = 'Los campos ' . substr($error_fields, 0, -2) . ' faltan o están vacíos';
         echo json_encode($response);
         return false;
     }
