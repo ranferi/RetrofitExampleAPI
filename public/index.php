@@ -71,6 +71,26 @@ $app->post('/register', function (Request $request, Response $response) {
     }
 });
 
+$app->post('/create', function (Request $request, Response $response) {
+    if (isTheseParametersAvailable(array('usuario', 'email', 'password', 'nombre', 'apellido_paterno', 'apellido_materno'))) {
+        $request_data = $request->getParsedBody();
+        $nombre = $request_data['nombre'];
+        $usuario = $request_data['usuario'];
+        $email = $request_data['email'];
+        $password = $request_data['password'];
+        $nombre = $request_data['nombre'];
+        $apellido_paterno = $request_data['apellido_paterno'];
+        $apellido_materno = $request_data['apellido_materno'];
+
+        $tst = new TstOperation();
+        $response_data = array();
+
+        $result = $tst->createUser($usuario, $email, $nombre, $password, $apellido_paterno, $apellido_paterno);
+
+
+    }
+});
+
 //user login route
 $app->post('/login', function (Request $request, Response $response) {
     if (isTheseParametersAvailable(array('email', 'password'))) {
