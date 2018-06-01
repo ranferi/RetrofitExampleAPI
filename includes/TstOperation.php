@@ -4,12 +4,18 @@ class TstOperation
 {
     private $con;
 
+    private $gs;
+    private $sparql;
+
     function __construct()
     {
+        EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/vlim1/ontologies/2018/4/susibo#');
         require_once dirname(__FILE__) . '/DbConnect.php';
         require '../vendor/autoload.php';
         $db = new DbConnect();
         $this->con = $db->connect();
+        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/susibo/data');
+        $this->sparql = new EasyRdf_Sparql_Client('http://localhost:3030/susibo/sparql');
     }
 
     /***
@@ -24,29 +30,22 @@ class TstOperation
      */
     function createUser($usuario, $email, $password, $nombre, $apellido_paterno, $apellido_materno)
     {
+        // $gs = new EasyRdf_GraphStore('http://localhost:3030/susibo/data');
 
-        EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/vlim1/ontologies/2018/4/susibo#');
-        $gs = new EasyRdf_GraphStore('http://localhost:3030/susibo/data');
-
-
-
-        if (!$this->isUserExist($email)) {
+        if (!$this->userExist($email)) {
             $pass_md5 = md5($password);
-            $stmt = $this->con->prepare("INSERT INTO users (name, email, password, gender) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("ssss", $name, $email, $password, $gender);
+            // $stmt = $this->con->prepare("INSERT INTO users (name, email, password, gender) VALUES (?, ?, ?, ?)");
+            // $stmt->bind_param("ssss", $name, $email, $password, $gender);
 
 
             $graph1 = new EasyRdf_Graph();
-            $graph1->add('su:i0435', 'su:usuario', $usuario);
-            $graph1->add('su:i0435', 'su:email', $email);
-            $graph1->add('su:i0435', 'su:password', $password);
-            $graph1->add('su:i0435', 'su:nombre', $nombre);
-            $graph1->add('su:i0435', 'su:apellidoPaterno', $apellido_paterno);
-            $graph1->add('su:i0435', 'su:apellidoMaterno', $apellido_materno);
-            $response = $gs->insertIntoDefault($graph1);
-
-
-
+            $graph1->add('su:i0436', 'su:usuario', $usuario);
+            $graph1->add('su:i0436', 'su:email', $email);
+            $graph1->add('su:i0436', 'su:password', $pass_md5);
+            $graph1->add('su:i0436', 'su:nombre', $nombre);
+            $graph1->add('su:i0436', 'su:apellidoPaterno', $apellido_paterno);
+            $graph1->add('su:i0436', 'su:apellidoMaterno', $apellido_materno);
+            $response = $this->gs->insertIntoDefault($graph1);
 
             if ($response->isSuccessful())
                 return USER_CREATED;
@@ -146,13 +145,19 @@ class TstOperation
         return $users;
     }
 
-    //Method to check if email already exist
-    function isUserExist($email)
+    /***
+     * Metodo para revisar si el correo ya existe en onto
+     * @param $email
+     * @return bool
+     */
+    function userExist($email)
     {
-        $stmt = $this->con->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->store_result();
-        return $stmt->num_rows > 0;
+        $result = $this->sparql->query(
+            'SELECT * WHERE {'.
+            ' ?usuario su:email "' . $email . '" ' .
+            '}'
+        );
+
+        return $result->numRows() > 0;
     }
 }

@@ -34,6 +34,7 @@ use \Psr\Http\Message\ResponseInterface as Response;
 
 require '../vendor/autoload.php';
 require_once '../includes/DbOperation.php';
+require_once '../includes/TstOperation.php';
 
 //Creating a new app with the config to show errors
 $app = new \Slim\App([
@@ -78,16 +79,27 @@ $app->post('/create', function (Request $request, Response $response) {
         $usuario = $request_data['usuario'];
         $email = $request_data['email'];
         $password = $request_data['password'];
-        $nombre = $request_data['nombre'];
         $apellido_paterno = $request_data['apellido_paterno'];
         $apellido_materno = $request_data['apellido_materno'];
 
         $tst = new TstOperation();
         $response_data = array();
 
-        $result = $tst->createUser($usuario, $email, $nombre, $password, $apellido_paterno, $apellido_paterno);
+        $result = $tst->createUser($usuario, $email, $password, $nombre,  $apellido_paterno, $apellido_materno);
 
+        if ($result == USER_CREATED) {
+            $response_data['error'] = false;
+            $response_data['message'] = 'Registro exitoso';
+            // $responseData['user'] = $db->getUserByEmail($email);
+        } elseif ($result == USER_CREATION_FAILED) {
+            $response_data['error'] = true;
+            $response_data['message'] = 'Ocurrio un error';
+        } elseif ($result == USER_EXIST) {
+            $response_data['error'] = true;
+            $response_data['message'] = 'Este correo ya existe, por favor inicia sesión';
+        }
 
+        $response->getBody()->write(json_encode($response_data));
     }
 });
 
