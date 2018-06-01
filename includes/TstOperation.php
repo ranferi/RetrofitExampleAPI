@@ -37,14 +37,23 @@ class TstOperation
             // $stmt = $this->con->prepare("INSERT INTO users (name, email, password, gender) VALUES (?, ?, ?, ?)");
             // $stmt->bind_param("ssss", $name, $email, $password, $gender);
 
+            // $id = mt_rand(700000, 800000);
+            $id = 744892;
+   
+            while ($this->idExist($id)) {
+                $id = mt_rand(700000, 800000);
+            }
+            $resource = "su:user_" . $id;
+
 
             $graph1 = new EasyRdf_Graph();
-            $graph1->add('su:i0436', 'su:usuario', $usuario);
-            $graph1->add('su:i0436', 'su:email', $email);
-            $graph1->add('su:i0436', 'su:password', $pass_md5);
-            $graph1->add('su:i0436', 'su:nombre', $nombre);
-            $graph1->add('su:i0436', 'su:apellidoPaterno', $apellido_paterno);
-            $graph1->add('su:i0436', 'su:apellidoMaterno', $apellido_materno);
+            $graph1->add($resource, 'su:usuario', $usuario);
+            $graph1->add($resource, 'su:email', $email);
+            $graph1->add($resource, 'su:password', $pass_md5);
+            $graph1->add($resource, 'su:nombre', $nombre);
+            $graph1->add($resource, 'su:identificador', $id);
+            $graph1->add($resource, 'su:apellidoPaterno', $apellido_paterno);
+            $graph1->add($resource, 'su:apellidoMaterno', $apellido_materno);
             $response = $this->gs->insertIntoDefault($graph1);
 
             if ($response->isSuccessful())
@@ -155,6 +164,17 @@ class TstOperation
         $result = $this->sparql->query(
             'SELECT * WHERE {'.
             ' ?usuario su:email "' . $email . '" ' .
+            '}'
+        );
+
+        return $result->numRows() > 0;
+    }
+
+    function idExist($id)
+    {
+        $result = $this->sparql->query(
+            'SELECT * WHERE {'.
+            ' ?usuario su:identificador ' . $id . ' .'.
             '}'
         );
 
