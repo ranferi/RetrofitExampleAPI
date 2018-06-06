@@ -34,17 +34,12 @@ class TstOperation
 
         if (!$this->userExist($email)) {
             $pass_md5 = md5($password);
-            // $stmt = $this->con->prepare("INSERT INTO users (name, email, password, gender) VALUES (?, ?, ?, ?)");
-            // $stmt->bind_param("ssss", $name, $email, $password, $gender);
+            $id = mt_rand(700000, 800000);
 
-            // $id = mt_rand(700000, 800000);
-            $id = 744892;
-   
             while ($this->idExist($id)) {
                 $id = mt_rand(700000, 800000);
             }
             $resource = "su:user_" . $id;
-
 
             $graph1 = new EasyRdf_Graph();
             $graph1->add($resource, 'su:usuario', $usuario);
@@ -84,13 +79,25 @@ class TstOperation
         return false;
     }
 
-    //Method to update profile of user
-    function updateProfile($id, $name, $email, $pass, $gender)
+
+    function updateProfile($id, $usuario, $email, $pass, $nombre, $apellido_paterno, $apellido_materno)
     {
-        $password = md5($pass);
-        $stmt = $this->con->prepare("UPDATE users SET name = ?, email = ?, password = ?, gender = ? WHERE id = ?");
-        $stmt->bind_param("ssssi", $name, $email, $password, $gender, $id);
-        if ($stmt->execute())
+        $pass_md5= md5($pass);
+        $graph1 = new EasyRdf_Graph();
+        $resource = "su:user_" . $id;
+        $graph1->add($resource, 'su:usuario', $usuario);
+        $graph1->add($resource, 'su:email', $email);
+        $graph1->add($resource, 'su:password', $pass_md5);
+        $graph1->add($resource, 'su:nombre', $nombre);
+        $graph1->add($resource, 'su:identificador', $id);
+        $graph1->add($resource, 'su:apellidoPaterno', $apellido_paterno);
+        $graph1->add($resource, 'su:apellidoMaterno', $apellido_materno);
+        $response = $this->gs->replaceDefault($graph1);
+
+
+        // $stmt = $this->con->prepare("UPDATE users SET name = ?, email = ?, password = ?, gender = ? WHERE id = ?");
+        // $stmt->bind_param("ssssi", $name, $email, $password, $gender, $id);
+        if ($response->isSuccessful())
             return true;
         return false;
     }
@@ -155,7 +162,7 @@ class TstOperation
     }
 
     /***
-     * Metodo para revisar si el correo ya existe en onto
+     * Método para revisar si el correo ya existe en ontología
      * @param $email
      * @return bool
      */
@@ -170,6 +177,11 @@ class TstOperation
         return $result->numRows() > 0;
     }
 
+    /***
+     * Método para revisar si existe ya un ID en la ontología
+     * @param $id
+     * @return bool
+     */
     function idExist($id)
     {
         $result = $this->sparql->query(

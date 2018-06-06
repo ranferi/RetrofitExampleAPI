@@ -211,31 +211,29 @@ $app->post('/insertUser', function (Request $request, Response $response) {
 
 //updating a user
 $app->post('/update/{id}', function (Request $request, Response $response) {
-    if (isTheseParametersAvailable(array('name', 'email', 'password', 'gender'))) {
+    if (isTheseParametersAvailable(array('usuario', 'email', 'password', 'nombre', 'apellido_paterno', 'apellido_materno'))) {
         $id = $request->getAttribute('id');
+        $request_data = $request->getParsedBody();
+        $usuario = $request_data['usuario'];
+        $email = $request_data['email'];
+        $password = $request_data['password'];
+        $nombre = $request_data['nombre'];
+        $apellido_paterno = $request_data['apellido_paterno'];
+        $apellido_materno = $request_data['apellido_materno'];
 
-        $requestData = $request->getParsedBody();
+        $tst = new TstOperation();
+        $response_data = array();
 
-        $name = $requestData['name'];
-        $email = $requestData['email'];
-        $password = $requestData['password'];
-        $gender = $requestData['gender'];
-
-
-        $db = new DbOperation();
-
-        $responseData = array();
-
-        if ($db->updateProfile($id, $name, $email, $password, $gender)) {
-            $responseData['error'] = false;
-            $responseData['message'] = 'Actualización exitosa';
-            $responseData['user'] = $db->getUserByEmail($email);
+        if ($tst->updateProfile($id, $usuario, $email, $password, $nombre, $apellido_paterno, $apellido_materno)) {
+            $response_data['error'] = false;
+            $response_data['message'] = 'Actualización exitosa';
+            $response_data['user'] = $tst->getUserByEmail($email);
         } else {
-            $responseData['error'] = true;
-            $responseData['message'] = 'No se actualizó';
+            $response_data['error'] = true;
+            $response_data['message'] = 'No se actualizó';
         }
 
-        $response->getBody()->write(json_encode($responseData));
+        $response->getBody()->write(json_encode($response_data));
     }
 });
 
