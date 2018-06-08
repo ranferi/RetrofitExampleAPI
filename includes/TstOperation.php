@@ -6,6 +6,7 @@ class TstOperation
 
     private $gs;
     private $sparql;
+    private $endpoint;
 
     function __construct()
     {
@@ -16,6 +17,9 @@ class TstOperation
         $this->con = $db->connect();
         $this->gs = new EasyRdf_GraphStore('http://localhost:3030/susibo/data');
         $this->sparql = new EasyRdf_Sparql_Client('http://localhost:3030/susibo/sparql');
+
+        $this->endpoint = new EasyRdf_Sparql_Client('http://localhost:3030/test/query',
+            'http://localhost:3030/test/update');
     }
 
     /***
@@ -59,6 +63,41 @@ class TstOperation
     }
 
     //Method for user login
+
+    /***
+     * Método para revisar si el correo ya existe en ontología
+     * @param $email
+     * @return bool
+     */
+    function userExist($email)
+    {
+        $result = $this->sparql->query(
+            'SELECT * WHERE {' .
+            ' ?usuario su:email "' . $email . '" ' .
+            '}'
+        );
+
+        return $result->numRows() > 0;
+    }
+
+    //Method to send a message to another user
+
+    /***
+     * Método para revisar si existe ya un ID en la ontología
+     * @param $id
+     * @return bool
+     */
+    function idExist($id)
+    {
+        $result = $this->sparql->query(
+            'SELECT * WHERE {' .
+            ' ?usuario su:identificador ' . $id . ' .' .
+            '}'
+        );
+
+        return $result->numRows() > 0;
+    }
+
     function userLogin($email, $pass)
     {
         $password = md5($pass);
@@ -69,7 +108,8 @@ class TstOperation
         return $stmt->num_rows > 0;
     }
 
-    //Method to send a message to another user
+    //Method to get messages of a particular user
+
     function sendMessage($from, $to, $title, $message)
     {
         $stmt = $this->con->prepare("INSERT INTO messages (from_users_id, to_users_id, title, message) VALUES (?, ?, ?, ?);");
@@ -79,21 +119,42 @@ class TstOperation
         return false;
     }
 
+    //Method to get user by email
 
     function updateProfile($id, $usuario, $email, $pass, $nombre, $apellido_paterno, $apellido_materno)
     {
-        $pass_md5= md5($pass);
+
+        $pass_md5 = md5($pass);
         $graph1 = new EasyRdf_Graph();
         $resource = "su:user_" . $id;
-        $graph1->add($resource, 'su:usuario', $usuario);
+
+
+        /*$graph1->add($resource, 'su:usuario', $usuario);
         $graph1->add($resource, 'su:email', $email);
         $graph1->add($resource, 'su:password', $pass_md5);
         $graph1->add($resource, 'su:nombre', $nombre);
         $graph1->add($resource, 'su:identificador', $id);
         $graph1->add($resource, 'su:apellidoPaterno', $apellido_paterno);
         $graph1->add($resource, 'su:apellidoMaterno', $apellido_materno);
-        $response = $this->gs->replaceDefault($graph1);
+        $response = $this->gs->replaceDefault($graph1);*/
 
+        $response = $this->endpoint->update("
+            DELETE {?s ?p ?o}
+            INSERT {
+              ?s su:nombre \"$nombre\" ;
+                su:email \"$email\" ;
+                su:usuario \"$usuario\" ;
+                su:apellidoPaterno \"$apellido_paterno\" ;
+                su:apellidoMaterno \"$apellido_materno\" ;
+                su:password \"$pass_md5\" ;
+                su:identificador \"$id\" .
+                   }
+            WHERE  {
+               ?s su:identificador \"$id\" .
+                  ?s ?p ?o . 
+                  FILTER(isUri(?p) && STRSTARTS(STR(?p), STR(su:)))
+            }"
+        );
 
         // $stmt = $this->con->prepare("UPDATE users SET name = ?, email = ?, password = ?, gender = ? WHERE id = ?");
         // $stmt->bind_param("ssssi", $name, $email, $password, $gender, $id);
@@ -102,7 +163,8 @@ class TstOperation
         return false;
     }
 
-    //Method to get messages of a particular user
+    //Method to get all users
+
     function getMessages($userid)
     {
         $stmt = $this->con->prepare("SELECT messages.id, (SELECT users.name FROM users WHERE users.id = messages.from_users_id) as `from`, (SELECT users.name FROM users WHERE users.id = messages.to_users_id) as `to`, messages.title, messages.message, messages.sentat FROM messages WHERE messages.to_users_id = ?;");
@@ -128,7 +190,6 @@ class TstOperation
         return $messages;
     }
 
-    //Method to get user by email
     function getUserByEmail($email)
     {
         $stmt = $this->con->prepare("SELECT id, name, email, gender FROM users WHERE email = ?");
@@ -144,13 +205,13 @@ class TstOperation
         return $user;
     }
 
-    //Method to get all users
-    function getAllUsers(){
+    function getAllUsers()
+    {
         $stmt = $this->con->prepare("SELECT id, name, email, gender FROM users");
         $stmt->execute();
         $stmt->bind_result($id, $name, $email, $gender);
         $users = array();
-        while($stmt->fetch()){
+        while ($stmt->fetch()) {
             $temp = array();
             $temp['id'] = $id;
             $temp['name'] = $name;
@@ -159,37 +220,5 @@ class TstOperation
             array_push($users, $temp);
         }
         return $users;
-    }
-
-    /***
-     * Método para revisar si el correo ya existe en ontología
-     * @param $email
-     * @return bool
-     */
-    function userExist($email)
-    {
-        $result = $this->sparql->query(
-            'SELECT * WHERE {'.
-            ' ?usuario su:email "' . $email . '" ' .
-            '}'
-        );
-
-        return $result->numRows() > 0;
-    }
-
-    /***
-     * Método para revisar si existe ya un ID en la ontología
-     * @param $id
-     * @return bool
-     */
-    function idExist($id)
-    {
-        $result = $this->sparql->query(
-            'SELECT * WHERE {'.
-            ' ?usuario su:identificador ' . $id . ' .'.
-            '}'
-        );
-
-        return $result->numRows() > 0;
     }
 }
