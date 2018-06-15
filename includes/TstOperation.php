@@ -6,11 +6,12 @@ class TstOperation
 
     private $gs;
     private $sparql;
-    private $endpoint;
+    public $endpoint;
 
     function __construct()
     {
         EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/vlim1/ontologies/2018/4/susibo#');
+        EasyRdf_Namespace::set('rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
         require_once dirname(__FILE__) . '/DbConnect.php';
         require '../vendor/autoload.php';
         $db = new DbConnect();
@@ -18,8 +19,8 @@ class TstOperation
         $this->gs = new EasyRdf_GraphStore('http://localhost:3030/susibo/data');
         $this->sparql = new EasyRdf_Sparql_Client('http://localhost:3030/susibo/sparql');
 
-        $this->endpoint = new EasyRdf_Sparql_Client('http://localhost:3030/test/query',
-            'http://localhost:3030/test/update');
+        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/susibo/query",
+            "http://localhost:3030/susibo/update");
     }
 
     /***
@@ -123,20 +124,7 @@ class TstOperation
 
     function updateProfile($id, $usuario, $email, $pass, $nombre, $apellido_paterno, $apellido_materno)
     {
-
         $pass_md5 = md5($pass);
-        $graph1 = new EasyRdf_Graph();
-        $resource = "su:user_" . $id;
-
-
-        /*$graph1->add($resource, 'su:usuario', $usuario);
-        $graph1->add($resource, 'su:email', $email);
-        $graph1->add($resource, 'su:password', $pass_md5);
-        $graph1->add($resource, 'su:nombre', $nombre);
-        $graph1->add($resource, 'su:identificador', $id);
-        $graph1->add($resource, 'su:apellidoPaterno', $apellido_paterno);
-        $graph1->add($resource, 'su:apellidoMaterno', $apellido_materno);
-        $response = $this->gs->replaceDefault($graph1);*/
 
         $response = $this->endpoint->update("
             DELETE {?s ?p ?o}
@@ -147,17 +135,15 @@ class TstOperation
                 su:apellidoPaterno \"$apellido_paterno\" ;
                 su:apellidoMaterno \"$apellido_materno\" ;
                 su:password \"$pass_md5\" ;
-                su:identificador \"$id\" .
-                   }
+                su:identificador " . $id . " ." .
+            "}
             WHERE  {
-               ?s su:identificador \"$id\" .
-                  ?s ?p ?o . 
+               ?s su:identificador " . $id . " ." .
+            "?s ?p ?o . 
                   FILTER(isUri(?p) && STRSTARTS(STR(?p), STR(su:)))
             }"
         );
 
-        // $stmt = $this->con->prepare("UPDATE users SET name = ?, email = ?, password = ?, gender = ? WHERE id = ?");
-        // $stmt->bind_param("ssssi", $name, $email, $password, $gender, $id);
         if ($response->isSuccessful())
             return true;
         return false;
@@ -192,16 +178,34 @@ class TstOperation
 
     function getUserByEmail($email)
     {
-        $stmt = $this->con->prepare("SELECT id, name, email, gender FROM users WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->bind_result($id, $name, $email, $gender);
-        $stmt->fetch();
+        $result = $this->endpoint->query("
+        SELECT ?subject ?id ?nombre ?usuario
+        WHERE {
+            ?subject su:email \"$email\" .
+            ?subject su:identificador ?id .
+            ?subject su:nombre ?nombre .
+            ?subject su:usuario ?usuario .
+        }"
+        );
+
         $user = array();
-        $user['id'] = $id;
-        $user['name'] = $name;
-        $user['email'] = $email;
-        $user['gender'] = $gender;
+      
+        if ($result->numRows() == 1) {
+            $user['id'] = $copy->current()->id;
+            $user['name'] = $copy->current()->nombre;
+            $user['email'] = $email;
+            $user['user'] = $copy->current()->usuario;
+        }
+
+        /* foreach ($result as $row) {
+            $user['id'] = $row->id;
+            $user['name'] = $row->nombre;
+            $user['email'] = $email;
+            $user['user'] = $row->usuario;
+        } */
+
+        // return print_r($result);
+        // return print_r($copy->current()->id);
         return $user;
     }
 
