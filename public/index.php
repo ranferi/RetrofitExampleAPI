@@ -83,6 +83,7 @@ $app->post('/create', function (Request $request, Response $response) {
         $apellido_materno = $request_data['apellido_materno'];
 
         $tst = new TstOperation();
+
         $response_data = array();
 
         $result = $tst->createUser($usuario, $email, $password, $nombre,  $apellido_paterno, $apellido_materno);
@@ -103,20 +104,22 @@ $app->post('/create', function (Request $request, Response $response) {
     }
 });
 
-//user login route
+/***
+ * Ruta para 'logear' al usuario
+ */
 $app->post('/login', function (Request $request, Response $response) {
     if (isTheseParametersAvailable(array('email', 'password'))) {
         $requestData = $request->getParsedBody();
         $email = $requestData['email'];
         $password = $requestData['password'];
 
-        $db = new DbOperation();
+        $tst = new TstOperation();
 
         $responseData = array();
 
-        if ($db->userLogin($email, $password)) {
+        if ($tst->userLogin($email, $password)) {
             $responseData['error'] = false;
-            $responseData['user'] = $db->getUserByEmail($email);
+            $responseData['user'] = $tst->getUserByEmail($email);
         } else {
             $responseData['error'] = true;
             $responseData['message'] = 'Email o password inválidos';
@@ -148,24 +151,6 @@ $app->get('/messages/{id}', function (Request $request, Response $response) {
 
     // $response->getBody()->write("My name is: " . $me->get('foaf:name')."\n");
 });
-
-// obtener todos las triples que tengan como predicado su:email
-$app->get('/emailAsPredicate', function (Request $request, Response $response) {
-    // $gs = new EasyRdf_GraphStore('http://localhost:3030/susibo/data/');
-    EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/vlim1/ontologies/2018/4/susibo#');
-    $sparql = new EasyRdf_Sparql_Client('http://localhost:3030/susibo/sparql');
-    require_once "html_tag_helpers.php";
-    $result = $sparql->query(
-        'SELECT ?subject ?predicate ?object ' .
-        ' WHERE {'.
-        '  ?subject su:email ?object .'.
-        '}'
-    );
-    foreach ($result as $row) {
-        echo "<li>".link_to($row->subject, $row->object)."</li>\n";
-    }
-});
-
 
 // insertar un usuario directo
 $app->post('/insertUser', function (Request $request, Response $response) {
