@@ -21,6 +21,8 @@ class TstOperation
 
         $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/susibo/query",
             "http://localhost:3030/susibo/update");
+
+
     }
 
     /***
@@ -176,9 +178,16 @@ class TstOperation
         return $messages;
     }
 
+    /***
+     * Método para obtener un usuario por su email
+     * @param $email
+     * @return array
+     */
     function getUserByEmail($email)
     {
-        $result = $this->endpoint->query("
+
+        $endpoint1 = new EasyRdf_Sparql_Client("http://localhost:3030/susibo/sparql");
+        $result = $endpoint1->query("
         SELECT ?subject ?id ?nombre ?usuario
         WHERE {
             ?subject su:email \"$email\" .
@@ -189,23 +198,14 @@ class TstOperation
         );
 
         $user = array();
-      
+
         if ($result->numRows() == 1) {
-            $user['id'] = $copy->current()->id;
-            $user['name'] = $copy->current()->nombre;
+            $user['id'] = $result->current()->id->getValue();
+            $user['name'] = $result->current()->nombre->getValue();
             $user['email'] = $email;
-            $user['user'] = $copy->current()->usuario;
+            $user['user'] = $result->current()->usuario->getValue();
         }
 
-        /* foreach ($result as $row) {
-            $user['id'] = $row->id;
-            $user['name'] = $row->nombre;
-            $user['email'] = $email;
-            $user['user'] = $row->usuario;
-        } */
-
-        // return print_r($result);
-        // return print_r($copy->current()->id);
         return $user;
     }
 
@@ -225,4 +225,6 @@ class TstOperation
         }
         return $users;
     }
+
+
 }
