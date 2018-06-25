@@ -41,15 +41,15 @@ class TstOperation
             }
             $resource = "su:user_" . $id;
 
-            $graph1 = new EasyRdf_Graph();
-            $graph1->add($resource, 'su:usuario', $usuario);
-            $graph1->add($resource, 'su:email', $email);
-            $graph1->add($resource, 'su:password', $pass_md5);
-            $graph1->add($resource, 'su:nombre', $nombre);
-            $graph1->add($resource, 'su:identificador', $id);
-            $graph1->add($resource, 'su:apellidoPaterno', $apellido_paterno);
-            $graph1->add($resource, 'su:apellidoMaterno', $apellido_materno);
-            $response = $this->gs->insertIntoDefault($graph1);
+            $graph = new EasyRdf_Graph();
+            $graph->add($resource, 'su:usuario', $usuario);
+            $graph->add($resource, 'su:email', $email);
+            $graph->add($resource, 'su:password', $pass_md5);
+            $graph->add($resource, 'su:nombre', $nombre);
+            $graph->add($resource, 'su:idUsuario', $id);
+            $graph->add($resource, 'su:apellidoPaterno', $apellido_paterno);
+            $graph->add($resource, 'su:apellidoMaterno', $apellido_materno);
+            $response = $this->gs->insertIntoDefault($graph);
 
             if ($response->isSuccessful())
                 return USER_CREATED;
@@ -84,7 +84,7 @@ class TstOperation
     {
         $result = $this->endpoint->query(
             'SELECT * WHERE {' .
-            ' ?usuario su:identificador ' . $id . ' .' .
+            ' ?usuario su:idUsuario ' . $id . ' .' .
             '}'
         );
 
@@ -105,7 +105,7 @@ class TstOperation
         WHERE {
             ?subject su:email \"$email\" .
             ?subject su:password \"$password\".
-            ?subject su:identificador ?id .
+            ?subject su:idUsuario ?id .
         }"
         );
 
@@ -114,14 +114,30 @@ class TstOperation
 
     //Method to get messages of a particular user
 
-/*    function sendMessage($from, $to, $title, $message)
+    function sendMessage($from, $to, $title, $message)
     {
-        $stmt = $this->con->prepare("INSERT INTO messages (from_users_id, to_users_id, title, message) VALUES (?, ?, ?, ?);");
-        $stmt->bind_param("iiss", $from, $to, $title, $message);
-        if ($stmt->execute())
+        $id = mt_rand(100000, 200000);
+
+        /* while ($this->idMessageExist($id)) {
+            $id = mt_rand(100000, 200000);
+        } */
+        $resource = "su:message_" . $id;
+
+        $graph = new EasyRdf_Graph();
+        $graph->add($resource, 'su:titulo', $title);
+        $graph->add($resource, 'su:mensaje', $message );
+        $graph->add($resource, 'su:idMensaje', $id );
+        $graph->add($resource, 'su:fecha', date("c"));
+        $graph->addResource($resource, 'su:deUsuario', 'su:user_' . $from);
+        $graph->addResource($resource, 'su:paraUsuario', 'su:user_' . $to);
+        $response = $this->gs->insertIntoDefault($graph);
+
+
+        if ($response->isSuccessful())
             return true;
         return false;
-    }*/
+
+    }
 
     /***
      * Método para actualizar al usuario
@@ -147,10 +163,10 @@ class TstOperation
                 su:apellidoPaterno \"$apellido_paterno\" ;
                 su:apellidoMaterno \"$apellido_materno\" ;
                 su:password \"$pass_md5\" ;
-                su:identificador " . $id . " ." .
+                su:idUsuario " . $id . " ." .
             "}
             WHERE  {
-               ?s su:identificador " . $id . " ." .
+               ?s su:idUsuario " . $id . " ." .
             "?s ?p ?o . 
                   FILTER(isUri(?p) && STRSTARTS(STR(?p), STR(su:)))
             }"
@@ -163,16 +179,38 @@ class TstOperation
 
     //Method to get all users
 
-/*    function getMessages($userid)
+    function getMessages($userid)
     {
-        $stmt = $this->con->prepare("SELECT messages.id, (SELECT users.name FROM users WHERE users.id = messages.from_users_id) as `from`, (SELECT users.name FROM users WHERE users.id = messages.to_users_id) as `to`, messages.title, messages.message, messages.sentat FROM messages WHERE messages.to_users_id = ?;");
+
+        $result = $this->endpoint->query("
+        SELECT ?subject ?from_user ?user ?title ?mensaje ?date 
+        WHERE {
+                ?subject su:idUsuario " . $userid . " .
+                ?subject su:usuario ?user .
+                ?mensaje_res su:paraUsuario ?subject .
+                ?mensaje_res su:deUsuario ?from .
+                ?from su:usuario ?from_user .
+                ?mensaje_res su:titulo ?title .
+                ?mensaje_res su:fecha ?date .
+                ?mensaje_res su:mensaje ?mensaje .
+        }"
+        );
+
+
+        /*$stmt = $this->con->prepare("SELECT messages.id,
+(SELECT users.name FROM users WHERE users.id = messages.from_users_id) as `from`, 
+(SELECT users.name FROM users WHERE users.id = messages.to_users_id) as `to`, 
+messages.title, 
+messages.message, 
+messages.sentat 
+FROM messages WHERE messages.to_users_id = ?;");
         $stmt->bind_param("i", $userid);
         $stmt->execute();
-        $stmt->bind_result($id, $from, $to, $title, $message, $sent);
+        $stmt->bind_result($id, $from, $to, $title, $message, $sent);*/
 
         $messages = array();
 
-        while ($stmt->fetch()) {
+       /* while ($stmt->fetch()) {
             $temp = array();
 
             $temp['id'] = $id;
@@ -183,10 +221,21 @@ class TstOperation
             $temp['sent'] = $sent;
 
             array_push($messages, $temp);
+        }*/
+
+        foreach ($result as $message) {
+            $temp = array();
+            // $temp['id'] = $message->id->getValue();
+            $temp['from'] = $message->from_user->getValue();
+            $temp['to'] = $message->user->getValue();
+            $temp['title'] = $message->title->getValue();
+            $temp['message'] = $message->mensaje->getValue();
+            $temp['sent'] = $message->date->getValue();
+            array_push($messages, $temp);
         }
 
         return $messages;
-    }*/
+    }
 
     /***
      * Método para obtener un usuario por su email
@@ -199,7 +248,7 @@ class TstOperation
         SELECT ?subject ?id ?nombre ?usuario
         WHERE {
             ?subject su:email \"$email\" .
-            ?subject su:identificador ?id .
+            ?subject su:idUsuario ?id .
             ?subject su:nombre ?nombre .
             ?subject su:usuario ?usuario .
         }"
@@ -224,25 +273,13 @@ class TstOperation
         SELECT ?subject ?id ?nombre ?usuario  ?email
         WHERE {
             ?subject su:email ?email.
-            ?subject su:identificador ?id .
+            ?subject su:idUsuario ?id .
             ?subject su:nombre ?nombre .
             ?subject su:usuario ?usuario .
         }"
         );
 
-
-        /*$stmt = $this->con->prepare("SELECT id, name, email, gender FROM users");
-        $stmt->execute();
-        $stmt->bind_result($id, $name, $email, $gender);*/
         $users = array();
-        /*while ($stmt->fetch()) {
-            $temp = array();
-            $temp['id'] = $id;
-            $temp['name'] = $name;
-            $temp['usuario'] = $usuario;
-            $temp['email'] = $email;
-            array_push($users, $temp);
-        }*/
 
         foreach ($result as $user) {
             $temp = array();

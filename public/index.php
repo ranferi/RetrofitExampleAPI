@@ -139,17 +139,11 @@ $app->get('/users', function (Request $request, Response $response) {
 //getting messages for a user
 $app->get('/messages/{id}', function (Request $request, Response $response) {
     $userid = $request->getAttribute('id');
-    $db = new DbOperation();
-    $messages = $db->getMessages($userid);
+    $tst = new TstOperation();
+    $messages = $tst->getMessages($userid);
 
     $response->getBody()->write(json_encode(array("messages" => $messages)));
 
-    // $foaf = new EasyRdf_Graph("http://njh.me/foaf.rdf");
-    // $foaf->load();
-    // $me = $foaf->primaryTopic();
-    // echo "My name is: ".$me->get('foaf:name')."\n";
-
-    // $response->getBody()->write("My name is: " . $me->get('foaf:name')."\n");
 });
 
 // insertar un usuario directo
@@ -232,11 +226,11 @@ $app->post('/sendmessage', function (Request $request, Response $response) {
         $title = $requestData['title'];
         $message = $requestData['message'];
 
-        $db = new DbOperation();
+        $tst = new TstOperation();
 
         $responseData = array();
 
-        if ($db->sendMessage($from, $to, $title, $message)) {
+        if ($tst->sendMessage($from, $to, $title, $message)) {
             $responseData['error'] = false;
             $responseData['message'] = 'Mensaje enviado';
         } else {
