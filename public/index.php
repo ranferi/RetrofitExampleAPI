@@ -30,50 +30,25 @@ require __DIR__ . '/../src/routes.php';
 $app->run();*/
 
 use \Psr\Http\Message\ServerRequestInterface as Request;
-use \Psr\Http\Message\ResponseInterface as Response;
+// use \Psr\Http\Message\ResponseInterface as Response;
+use Slim\Http\Response;
 
 require '../vendor/autoload.php';
-require_once '../includes/DbOperation.php';
 require_once '../includes/TstOperation.php';
 
-//Creating a new app with the config to show errors
+// Se configura la app para que muestre los errores
 $app = new \Slim\App([
     'settings' => [
         'displayErrorDetails' => true
     ]
 ]);
 
-//registering a new user
+/**
+ * Registra un nuevo usuario
+ */
 $app->post('/register', function (Request $request, Response $response) {
-    if (isTheseParametersAvailable(array('name', 'email', 'password', 'gender'))) {
-        $requestData = $request->getParsedBody();
-        $name = $requestData['name'];
-        $email = $requestData['email'];
-        $password = $requestData['password'];
-        $gender = $requestData['gender'];
-        $db = new DbOperation();
-        $responseData = array();
-
-        $result = $db->registerUser($name, $email, $password, $gender);
-
-        if ($result == USER_CREATED) {
-            $responseData['error'] = false;
-            $responseData['message'] = 'Registro exitoso';
-            $responseData['user'] = $db->getUserByEmail($email);
-        } elseif ($result == USER_CREATION_FAILED) {
-            $responseData['error'] = true;
-            $responseData['message'] = 'Ocurrio un error';
-        } elseif ($result == USER_EXIST) {
-            $responseData['error'] = true;
-            $responseData['message'] = 'Este correo ya existe, por favor inicia sesión';
-        }
-
-        $response->getBody()->write(json_encode($responseData));
-    }
-});
-
-$app->post('/create', function (Request $request, Response $response) {
-    if (isTheseParametersAvailable(array('usuario', 'email', 'password', 'nombre', 'apellido_paterno', 'apellido_materno'))) {
+    $params = isTheseParametersAvailable(array('usuario', 'email', 'password', 'nombre', 'apellido_paterno', 'apellido_materno'));
+    if (!$params["error"]) {
         $request_data = $request->getParsedBody();
         $usuario = $request_data['usuario'];
         $email = $request_data['email'];
@@ -91,7 +66,7 @@ $app->post('/create', function (Request $request, Response $response) {
         if ($result == USER_CREATED) {
             $response_data['error'] = false;
             $response_data['message'] = 'Registro exitoso';
-            // $responseData['user'] = $db->getUserByEmail($email);
+            // $response_data['user'] = $db->getUserByEmail($email);
         } elseif ($result == USER_CREATION_FAILED) {
             $response_data['error'] = true;
             $response_data['message'] = 'Ocurrio un error';
@@ -100,97 +75,68 @@ $app->post('/create', function (Request $request, Response $response) {
             $response_data['message'] = 'Este correo ya existe, por favor inicia sesión';
         }
 
-        $response->getBody()->write(json_encode($response_data));
+        return $response->withJson($response_data);
+    } else {
+        return $response->withJson($params);
     }
+
 });
 
 /***
  * Ruta para 'logear' al usuario
  */
 $app->post('/login', function (Request $request, Response $response) {
-    if (isTheseParametersAvailable(array('email', 'password'))) {
-        $requestData = $request->getParsedBody();
-        $email = $requestData['email'];
-        $password = $requestData['password'];
+    $params = isTheseParametersAvailable(array('email', 'password'));
+    if (!$params["error"]) {
+        $request_data = $request->getParsedBody();
+        $email = $request_data['email'];
+        $password = $request_data['password'];
 
         $tst = new TstOperation();
 
-        $responseData = array();
+        $response_data = array();
 
         if ($tst->userLogin($email, $password)) {
-            $responseData['error'] = false;
-            $responseData['user'] = $tst->getUserByEmail($email);
+            $response_data['error'] = false;
+            $response_data['user'] = $tst->getUserByEmail($email);
         } else {
-            $responseData['error'] = true;
-            $responseData['message'] = 'Email o password inválidos';
+            $response_data['error'] = true;
+            $response_data['message'] = 'Email o password inválidos';
         }
 
-        $response->getBody()->write(json_encode($responseData));
+        return $response->withJson($response_data);
+    } else {
+        return $response->withJson($params);
     }
 });
 
-//getting all users
+/**
+ * Se obtienen todos lo usuarios
+ */
 $app->get('/users', function (Request $request, Response $response) {
     $db = new DbOperation();
     $users = $db->getAllUsers();
-    $response->getBody()->write(json_encode(array("users" => $users)));
+    $response->withJson(array("users" => $users));
 });
 
-//getting messages for a user
+/**
+ * Se traen todos los mensajes de un usuario
+ */
 $app->get('/messages/{id}', function (Request $request, Response $response) {
     $userid = $request->getAttribute('id');
     $tst = new TstOperation();
     $messages = $tst->getMessages($userid);
 
-    $response->getBody()->write(json_encode(array("messages" => $messages)));
+    return $response->withJson(array("messages" => $messages));
 
 });
 
-// insertar un usuario directo
-$app->post('/insertUser', function (Request $request, Response $response) {
-    EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/vlim1/ontologies/2018/4/susibo#');
-    $gs = new EasyRdf_GraphStore('http://localhost:3030/susibo/data');
-    // Add the current time in a graph
-    $graph1 = new EasyRdf_Graph();
-    $graph1->add('su:i0434', 'su:nombre', 'Craig');
-    $graph1->add('su:i0434', 'su:apellidoPaterno', 'Ellis');
-    $graph1->add('su:i0434', 'su:email', 'craigellis@yahoo.com');
-    $gs->insertIntoDefault($graph1);
-    // Get the graph back out of the graph store and display it
-    // $graph2 = $gs->get('time.rdf');
-    //print $graph2->dump();
-
-    if (isTheseParametersAvailable(array('name', 'email', 'password', 'gender'))) {
-        $id = $request->getAttribute('id');
-
-        $requestData = $request->getParsedBody();
-
-        $name = $requestData['name'];
-        $email = $requestData['email'];
-        $password = $requestData['password'];
-        $gender = $requestData['gender'];
-
-
-        $db = new DbOperation();
-
-        $responseData = array();
-
-        if ($db->updateProfile($id, $name, $email, $password, $gender)) {
-            $responseData['error'] = false;
-            $responseData['message'] = 'Actualización exitosa';
-            $responseData['user'] = $db->getUserByEmail($email);
-        } else {
-            $responseData['error'] = true;
-            $responseData['message'] = 'No se actualizó';
-        }
-
-        $response->getBody()->write(json_encode($responseData));
-    }
-});
-
-//updating a user
+/**
+ * Se actualiza la información de un usuario
+ */
 $app->post('/update/{id}', function (Request $request, Response $response) {
-    if (isTheseParametersAvailable(array('usuario', 'email', 'password', 'nombre', 'apellido_paterno', 'apellido_materno'))) {
+    $params = isTheseParametersAvailable(array('usuario', 'email', 'password', 'nombre', 'apellido_paterno', 'apellido_materno'));
+    if (!$params["error"]) {
         $id = $request->getAttribute('id');
         $request_data = $request->getParsedBody();
         $usuario = $request_data['usuario'];
@@ -212,37 +158,47 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
             $response_data['message'] = 'No se actualizó';
         }
 
-        $response->getBody()->write(json_encode($response_data));
+        return $response->withJson($response_data);
+    } else {
+        return $response->withJson($params);
     }
 });
 
-
-//sending message to user
+/**
+ * Se envia un mensaje a un usuario
+ */
 $app->post('/sendmessage', function (Request $request, Response $response) {
-    if (isTheseParametersAvailable(array('from', 'to', 'title', 'message'))) {
-        $requestData = $request->getParsedBody();
-        $from = $requestData['from'];
-        $to = $requestData['to'];
-        $title = $requestData['title'];
-        $message = $requestData['message'];
+    $params = isTheseParametersAvailable(array('from', 'to', 'title', 'message'));
+    if (!$params["error"]) {
+        $request_data = $request->getParsedBody();
+        $from = $request_data['from'];
+        $to = $request_data['to'];
+        $title = $request_data['title'];
+        $message = $request_data['message'];
 
         $tst = new TstOperation();
 
-        $responseData = array();
+        $response_data = array();
 
         if ($tst->sendMessage($from, $to, $title, $message)) {
-            $responseData['error'] = false;
-            $responseData['message'] = 'Mensaje enviado';
+            $response_data['error'] = false;
+            $response_data['message'] = 'Mensaje enviado';
         } else {
-            $responseData['error'] = true;
-            $responseData['message'] = 'No se pudo enviar el mensaje';
+            $response_data['error'] = true;
+            $response_data['message'] = 'No se pudo enviar el mensaje';
         }
 
-        $response->getBody()->write(json_encode($responseData));
+        return $response->withJson($response_data);
+    } else {
+        return $response->withJson($params);
     }
 });
 
-//function to check parameters
+/**
+ * Checa que los parametros no esten vacios
+ * @param $required_fields
+ * @return array
+ */
 function isTheseParametersAvailable($required_fields)
 {
     $error = false;
@@ -256,14 +212,15 @@ function isTheseParametersAvailable($required_fields)
         }
     }
 
+    $response = array();
     if ($error) {
-        $response = array();
         $response["error"] = true;
-        $response["message"] = 'Los campos ' . substr($error_fields, 0, -2) . ' faltan o están vacíos';
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
-        return false;
+        $response["message"] = 'Los campos [' . substr($error_fields, 0, -2) . '] faltan o están vacíos';
+    } else {
+        $response["error"] = false;
     }
-    return true;
+    return $response;
 }
 
 $app->run();
+

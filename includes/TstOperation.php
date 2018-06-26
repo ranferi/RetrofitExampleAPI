@@ -32,11 +32,11 @@ class TstOperation
      */
     function createUser($usuario, $email, $password, $nombre, $apellido_paterno, $apellido_materno)
     {
-        if (!$this->userExist($email)) {
+        if (!$this->checkEmailExist($email)) {
             $pass_md5 = md5($password);
             $id = mt_rand(700000, 800000);
 
-            while ($this->idExist($id)) {
+            while ($this->checkIDExist($id)) {
                 $id = mt_rand(700000, 800000);
             }
             $resource = "su:user_" . $id;
@@ -64,7 +64,7 @@ class TstOperation
      * @param $email
      * @return bool
      */
-    function userExist($email)
+    function checkEmailExist($email)
     {
         $result = $this->endpoint->query(
             'SELECT * WHERE {' .
@@ -80,7 +80,7 @@ class TstOperation
      * @param $id
      * @return bool
      */
-    function idExist($id)
+    function checkIDExist($id)
     {
         $result = $this->endpoint->query(
             'SELECT * WHERE {' .
@@ -103,9 +103,9 @@ class TstOperation
         $result = $this->endpoint->query("
         SELECT ?id
         WHERE {
-            ?subject su:email \"$email\" .
-            ?subject su:password \"$password\".
-            ?subject su:idUsuario ?id .
+            ?sujeto su:email \"$email\" .
+            ?sujeto su:password \"$password\".
+            ?sujeto su:idUsuario ?id .
         }"
         );
 
@@ -183,11 +183,11 @@ class TstOperation
     {
 
         $result = $this->endpoint->query("
-        SELECT ?subject ?from_user ?user ?title ?mensaje ?date 
+        SELECT ?sujeto ?from_user ?user ?title ?mensaje ?date 
         WHERE {
-                ?subject su:idUsuario " . $userid . " .
-                ?subject su:usuario ?user .
-                ?mensaje_res su:paraUsuario ?subject .
+                ?sujeto su:idUsuario " . $userid . " .
+                ?sujeto su:usuario ?user .
+                ?mensaje_res su:paraUsuario ?sujeto .
                 ?mensaje_res su:deUsuario ?from .
                 ?from su:usuario ?from_user .
                 ?mensaje_res su:titulo ?title .
@@ -196,36 +196,10 @@ class TstOperation
         }"
         );
 
-
-        /*$stmt = $this->con->prepare("SELECT messages.id,
-(SELECT users.name FROM users WHERE users.id = messages.from_users_id) as `from`, 
-(SELECT users.name FROM users WHERE users.id = messages.to_users_id) as `to`, 
-messages.title, 
-messages.message, 
-messages.sentat 
-FROM messages WHERE messages.to_users_id = ?;");
-        $stmt->bind_param("i", $userid);
-        $stmt->execute();
-        $stmt->bind_result($id, $from, $to, $title, $message, $sent);*/
-
         $messages = array();
-
-       /* while ($stmt->fetch()) {
-            $temp = array();
-
-            $temp['id'] = $id;
-            $temp['from'] = $from;
-            $temp['to'] = $to;
-            $temp['title'] = $title;
-            $temp['message'] = $message;
-            $temp['sent'] = $sent;
-
-            array_push($messages, $temp);
-        }*/
 
         foreach ($result as $message) {
             $temp = array();
-            // $temp['id'] = $message->id->getValue();
             $temp['from'] = $message->from_user->getValue();
             $temp['to'] = $message->user->getValue();
             $temp['title'] = $message->title->getValue();
@@ -237,7 +211,7 @@ FROM messages WHERE messages.to_users_id = ?;");
         return $messages;
     }
 
-    /***
+    /**
      * Método para obtener un usuario por su email
      * @param $email
      * @return array
@@ -245,12 +219,12 @@ FROM messages WHERE messages.to_users_id = ?;");
     function getUserByEmail($email)
     {
         $result = $this->endpoint->query("
-        SELECT ?subject ?id ?nombre ?usuario
+        SELECT ?sujeto ?id ?nombre ?usuario
         WHERE {
-            ?subject su:email \"$email\" .
-            ?subject su:idUsuario ?id .
-            ?subject su:nombre ?nombre .
-            ?subject su:usuario ?usuario .
+            ?sujeto su:email \"$email\" .
+            ?sujeto su:idUsuario ?id .
+            ?sujeto su:nombre ?nombre .
+            ?sujeto su:usuario ?usuario .
         }"
         );
 
@@ -266,16 +240,20 @@ FROM messages WHERE messages.to_users_id = ?;");
         return $user;
     }
 
+    /**
+     * Método para enlistar todos los usuarios en la ontología
+     * @return array
+     */
     function getAllUsers()
     {
 
         $result = $this->endpoint->query("
-        SELECT ?subject ?id ?nombre ?usuario  ?email
+        SELECT ?sujeto ?id ?nombre ?usuario  ?email
         WHERE {
-            ?subject su:email ?email.
-            ?subject su:idUsuario ?id .
-            ?subject su:nombre ?nombre .
-            ?subject su:usuario ?usuario .
+            ?sujeto su:email ?email.
+            ?sujeto su:idUsuario ?id .
+            ?sujeto su:nombre ?nombre .
+            ?sujeto su:usuario ?usuario .
         }"
         );
 
