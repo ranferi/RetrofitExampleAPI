@@ -219,11 +219,13 @@ class TstOperation
     function getUserByEmail($email)
     {
         $result = $this->endpoint->query("
-        SELECT ?sujeto ?id ?nombre ?usuario
+        SELECT ?sujeto ?id ?nombre ?usuario ?apellidoPaterno ?apellidoMaterno
         WHERE {
             ?sujeto su:email \"$email\" .
             ?sujeto su:idUsuario ?id .
             ?sujeto su:nombre ?nombre .
+            ?sujeto su:apellidoPaterno ?apellidoPaterno .
+            ?sujeto su:apellidoMaterno ?apellidoMaterno .
             ?sujeto su:usuario ?usuario .
         }"
         );
@@ -233,9 +235,12 @@ class TstOperation
         if ($result->numRows() == 1) {
             $user['id'] = $result->current()->id->getValue();
             $user['name'] = $result->current()->nombre->getValue();
+            $user['lastName'] = $result->current()->apellidoPaterno->getValue();
+            $user['mothersMaidenName'] = $result->current()->apellidoMaterno->getValue();
             $user['email'] = $email;
             $user['user'] = $result->current()->usuario->getValue();
         }
+        // print_r($user);
 
         return $user;
     }
@@ -257,14 +262,16 @@ class TstOperation
         }"
         );
 
+        //print_r($result);
+
         $users = array();
 
         foreach ($result as $user) {
             $temp = array();
             $temp['id'] = $user->id->getValue();
-            $temp['name'] = $user->name->getValue();
-            $temp['email'] = $user->email->getValue();
+            $temp['name'] = $user->nombre->getValue();
             $temp['usuario'] = $user->usuario->getValue();
+            $temp['email'] = $user->email->getValue();
             array_push($users, $temp);
         }
         return $users;

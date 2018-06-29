@@ -66,7 +66,7 @@ $app->post('/register', function (Request $request, Response $response) {
         if ($result == USER_CREATED) {
             $response_data['error'] = false;
             $response_data['message'] = 'Registro exitoso';
-            // $response_data['user'] = $db->getUserByEmail($email);
+            $response_data['user'] = $tst->getUserByEmail($email);
         } elseif ($result == USER_CREATION_FAILED) {
             $response_data['error'] = true;
             $response_data['message'] = 'Ocurrio un error';
@@ -114,9 +114,9 @@ $app->post('/login', function (Request $request, Response $response) {
  * Se obtienen todos lo usuarios
  */
 $app->get('/users', function (Request $request, Response $response) {
-    $db = new DbOperation();
-    $users = $db->getAllUsers();
-    $response->withJson(array("users" => $users));
+    $tst = new TstOperation();
+    $users = $tst->getAllUsers();
+    return $response->withJson(array("users" => $users));
 });
 
 /**
@@ -126,7 +126,7 @@ $app->get('/messages/{id}', function (Request $request, Response $response) {
     $userid = $request->getAttribute('id');
     $tst = new TstOperation();
     $messages = $tst->getMessages($userid);
-
+    // print_r($userid);
     return $response->withJson(array("messages" => $messages));
 
 });
