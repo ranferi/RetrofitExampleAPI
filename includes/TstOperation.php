@@ -7,16 +7,16 @@ class TstOperation
 
     function __construct()
     {
-        require_once dirname(__FILE__) . '/DbConnect.php';
+        require_once dirname(__FILE__) . '/Constants.php';
         require '../vendor/autoload.php';
 
-        EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/vlim1/ontologies/2018/4/susibo#');
+        EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/ranferi/ontologies/2018/9/ssrsi_onto#');
         EasyRdf_Namespace::set('rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
 
-        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/susibo/data');
+        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/ssrsi/data');
 
-        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/susibo/query",
-            "http://localhost:3030/susibo/update");
+        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/ssrsi/query",
+            "http://localhost:3030/ssrsi/update");
 
     }
 
@@ -32,7 +32,7 @@ class TstOperation
      */
     function createUser($usuario, $email, $password, $nombre, $apellido_paterno, $apellido_materno)
     {
-        if (!$this->checkEmailExist($email)) {
+        if (!$this->checkUserExist($usuario) && !$this->checkEmailExist($email)) {
             $pass_md5 = md5($password);
             $id = mt_rand(700000, 800000);
 
@@ -69,6 +69,23 @@ class TstOperation
         $result = $this->endpoint->query(
             'SELECT * WHERE {' .
             ' ?usuario su:email "' . $email . '" ' .
+            '}'
+        );
+
+        return $result->numRows() > 0;
+    }
+
+
+    /***
+     * Método para revisar si el correo ya existe en ontología
+     * @param $email
+     * @return bool
+     */
+    function checkUserExist($user)
+    {
+        $result = $this->endpoint->query(
+            'SELECT * WHERE {' .
+            ' ?usuario su:usuario "' . $user . '" ' .
             '}'
         );
 
@@ -113,14 +130,13 @@ class TstOperation
     }
 
     //Method to get messages of a particular user
-
     function sendMessage($from, $to, $title, $message)
     {
         $id = mt_rand(100000, 200000);
 
-        /* while ($this->idMessageExist($id)) {
+         while ($this->idMessageExist($id)) {
             $id = mt_rand(100000, 200000);
-        } */
+        }
         $resource = "su:message_" . $id;
 
         $graph = new EasyRdf_Graph();
@@ -209,6 +225,41 @@ class TstOperation
         }
 
         return $messages;
+    }
+
+
+    /**
+     * Método para obtener un usuario por su email
+     * @param $email
+     * @return array
+     */
+    function getUserByUsername($user)
+    {
+        $result = $this->endpoint->query("
+        SELECT ?sujeto ?id ?nombre ?usuario ?apellidoPaterno ?apellidoMaterno
+        WHERE {
+            ?sujeto su:usuario \"$user\" .
+            ?sujeto su:idUsuario ?id .
+            ?sujeto su:nombre ?nombre .
+            ?sujeto su:apellidoPaterno ?apellidoPaterno .
+            ?sujeto su:apellidoMaterno ?apellidoMaterno .
+            ?sujeto su:email ?email.
+        }"
+        );
+
+        $user = array();
+
+        if ($result->numRows() == 1) {
+            $user['id'] = $result->current()->id->getValue();
+            $user['name'] = $result->current()->nombre->getValue();
+            $user['lastName'] = $result->current()->apellidoPaterno->getValue();
+            $user['mothersMaidenName'] = $result->current()->apellidoMaterno->getValue();
+            $user['user'] = $user;
+            $user['email'] = $result->current()->email->getValue();
+        }
+        // print_r($user);
+
+        return $user;
     }
 
     /**

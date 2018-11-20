@@ -36,7 +36,9 @@ use Slim\Http\Response;
 require '../vendor/autoload.php';
 require_once '../includes/TstOperation.php';
 
-// Se configura la app para que muestre los errores
+/**
+ * Se configura la app para que muestre los errores
+ */
 $app = new \Slim\App([
     'settings' => [
         'displayErrorDetails' => true
@@ -61,7 +63,7 @@ $app->post('/register', function (Request $request, Response $response) {
 
         $response_data = array();
 
-        $result = $tst->createUser($usuario, $email, $password, $nombre,  $apellido_paterno, $apellido_materno);
+        $result = $tst->createUser($usuario, $email, $password, $nombre, $apellido_paterno, $apellido_materno);
 
         if ($result == USER_CREATED) {
             $response_data['error'] = false;
@@ -72,7 +74,7 @@ $app->post('/register', function (Request $request, Response $response) {
             $response_data['message'] = 'Ocurrio un error';
         } elseif ($result == USER_EXIST) {
             $response_data['error'] = true;
-            $response_data['message'] = 'Este correo ya existe, por favor inicia sesión';
+            $response_data['message'] = 'Este usuario o correo ya existe, por favor inicia sesión';
         }
 
         return $response->withJson($response_data);
