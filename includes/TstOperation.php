@@ -78,7 +78,7 @@ class TstOperation
 
     /***
      * Método para revisar si el correo ya existe en ontología
-     * @param $email
+     * @param $user
      * @return bool
      */
     function checkUserExist($user)
@@ -230,7 +230,7 @@ class TstOperation
 
     /**
      * Método para obtener un usuario por su email
-     * @param $email
+     * @param $user
      * @return array
      */
     function getUserByUsername($user)
