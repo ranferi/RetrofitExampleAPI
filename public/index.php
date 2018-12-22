@@ -49,15 +49,15 @@ $app = new \Slim\App([
  * Registra un nuevo usuario
  */
 $app->post('/register', function (Request $request, Response $response) {
-    $params = isTheseParametersAvailable(array('usuario', 'email', 'password', 'nombre', 'apellido_paterno', 'apellido_materno'));
+    $params = isTheseParametersAvailable(array('usuario', 'email', 'password'));
     if (!$params["error"]) {
         $request_data = $request->getParsedBody();
         $usuario = $request_data['usuario'];
         $email = $request_data['email'];
         $password = $request_data['password'];
-        $nombre = $request_data['nombre'];
-        $apellido_paterno = $request_data['apellido_paterno'];
-        $apellido_materno = $request_data['apellido_materno'];
+        $nombre = $request_data['nombre'] ?: '';
+        $apellido_paterno = $request_data['apellido_paterno'] ?: '';
+        $apellido_materno = $request_data['apellido_materno'] ?: '';
 
         $tst = new TstOperation();
 
@@ -137,16 +137,16 @@ $app->get('/messages/{id}', function (Request $request, Response $response) {
  * Se actualiza la información de un usuario
  */
 $app->post('/update/{id}', function (Request $request, Response $response) {
-    $params = isTheseParametersAvailable(array('usuario', 'email', 'password', 'nombre', 'apellido_paterno', 'apellido_materno'));
+    $params = isTheseParametersAvailable(array('usuario', 'email', 'password'));
     if (!$params["error"]) {
         $id = $request->getAttribute('id');
         $request_data = $request->getParsedBody();
         $usuario = $request_data['usuario'];
         $email = $request_data['email'];
         $password = $request_data['password'];
-        $nombre = $request_data['nombre'];
-        $apellido_paterno = $request_data['apellido_paterno'];
-        $apellido_materno = $request_data['apellido_materno'];
+        $nombre = $request_data['nombre'] ?: '';
+        $apellido_paterno = $request_data['apellido_paterno'] ?: '';
+        $apellido_materno = $request_data['apellido_materno'] ?: '';
 
         $tst = new TstOperation();
         $response_data = array();
