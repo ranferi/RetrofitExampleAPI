@@ -434,7 +434,7 @@ class TstOperation
                 WHERE {
                     ?sujeto su:idSitio " . $temp_id . " .
                     ?sujeto su:tienePropiedad ?prop .
-                    ?prop su:imagenSitio ?calificacion .
+                    ?prop su:imagenSitio ?imagen .
                 }"
             );
 
@@ -461,7 +461,7 @@ class TstOperation
             foreach ($sixth as $comment) {
                 $temp_3 = array();
                 $temp_3['comentario'] = $comment->comentario->getValue();
-                $temp_3['base'] = $comment->base->localName();
+                $temp_3['proviene'] = $comment->base->localName();
                 array_push($comments, $temp_3);
             }
             $temp['comentarios'] = $comments;
