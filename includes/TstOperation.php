@@ -4,6 +4,7 @@ class TstOperation
 {
     private $gs;
     private $endpoint;
+    private $client;
 
     function __construct()
     {
@@ -15,10 +16,15 @@ class TstOperation
         EasyRdf_Namespace::set('rdfs', 'http://www.w3.org/2000/01/rdf-schema#');
         EasyRdf_Namespace::set('owl', 'http://www.w3.org/2002/07/owl#');
 
-        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/ssrsi/data');
+        #$config = array("timeout"=>100, "maxredirects" => 6);
+        #EasyRdf_Http::setDefaultHttpClient(
+        #     $this->client = new EasyRdf_Http_Client(null, $config)
+        # );
+        # $this->client->setHeaders('Authorization', 'Basic ' . base64_encode("admin:admin"));
+        $this->gs = new  EasyRdf_GraphStore('http://localhost:3030/repositories/prueba3/rdf-graphs/service');
 
-        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/ssrsi/query",
-            "http://localhost:3030/ssrsi/update");
+        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/prueba3",
+            "http://localhost:3030/repositories/prueba3/statements");
 
     }
 
@@ -248,7 +254,6 @@ class TstOperation
             ?sujeto su:email ?email.
         }"
         );
-
         $user = array();
 
         if ($result->numRows() == 1) {
@@ -259,7 +264,6 @@ class TstOperation
             $user['user'] = $user;
             $user['email'] = $result->current()->email->getValue();
         }
-        // print_r($user);
 
         return $user;
     }
@@ -304,7 +308,6 @@ class TstOperation
      */
     function getAllUsers()
     {
-
         $result = $this->endpoint->query("
         SELECT ?sujeto ?id ?nombre ?usuario  ?email
         WHERE {
@@ -314,9 +317,6 @@ class TstOperation
             ?sujeto su:usuario ?usuario .
         }"
         );
-
-        print_r($result);
-
         $users = array();
 
         foreach ($result as $user) {
@@ -336,19 +336,18 @@ class TstOperation
         SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
         WHERE {
             ?sujeto su:idSitio ?id .
-            ?sujeto su:tieneUnValorMEDI ?medi .
-            ?sujeto su:tienePropiedad ?prop .
-            ?prop su:latitud ?latitud .
-            ?sujeto su:tienePropiedad ?prop1 .
-            ?prop1 su:longitud ?longitud .
-            ?sujeto su:tienePropiedad ?prop2 .
-            ?prop2 su:direccionSitio ?dir .
-            ?sujeto su:tienePropiedad ?prop3 .
-            ?prop3 su:musica ?musica .
-        }"
+            ?sujeto a [
+                a owl:Restriction;
+                owl:onProperty su:tieneUnValorMEDI;
+                owl:someValuesFrom ?medi
+            ] .
+            ?sujeto su:tienePropiedad/su:direccionSitio ?dir .
+            ?sujeto su:tienePropiedad/su:musica ?musica .
+            OPTIONAL { ?sujeto su:tienePropiedad/su:latitud ?latitud . }
+            OPTIONAL { ?sujeto su:tienePropiedad/su:longitud ?longitud . }
+        }
+        LIMIT 5"
         );
-
-        //print_r($result);
 
         $points = array();
 
@@ -357,11 +356,12 @@ class TstOperation
             $temp_id = $place->id->getValue();
             $temp['id'] = $temp_id;
             $temp['medi'] = $place->medi->localName();
-            $temp['latitud'] = $place->latitud->getValue();
-            $temp['longitud'] = $place->longitud->getValue();
+            if (isset($place->latitud))
+                $temp['latitud'] = $place->latitud->getValue();
+            if (isset($place->longitud))
+                $temp['longitud'] = $place->longitud->getValue();
             $temp['direccion'] = $place->dir->getValue();
             $temp['musica'] = $place->musica->getValue();
-            // array_push($points, $temp);
 
             $second = $this->endpoint->query("
                 SELECT ?sujeto ?nombreSitio ?base
@@ -372,7 +372,6 @@ class TstOperation
                     ?prop su:provieneDeBD ?base .
                 }"
             );
-            // print_r($second);
 
             $names = array();
             foreach ($second as $name) {
@@ -400,17 +399,29 @@ class TstOperation
                 $temp_3['proviene'] = $rating->base->localName();
                 array_push($ratings, $temp_3);
             }
+            $total = 0.0;
+            if ($ratings) {
+                foreach ($ratings as $rating) {
+                    if ($rating['proviene'] == "GooglePlaces")
+                        $total += $rating['calificacion'] * 2.0;
+                    else
+                        $total += $rating['calificacion'];
+                }
+                $total = $total / 2.0;
+            }
             $temp['calificaciones'] = $ratings;
+            $temp['total'] = $total;
 
 
+            // Categorias
             $fourth = $this->endpoint->query("
-                SELECT ?categoria ?superclase
+                SELECT ?categoria ?proviene
                 WHERE {
                     ?s su:idSitio " . $temp_id . " .
                     ?s su:tienePropiedad ?prop .
                     ?prop su:categoria ?prop1 .
                     ?prop1 rdf:type ?categoria .
-                    ?categoria rdfs:subClassOf [ rdf:rest* [ owl:onProperty su:esParteDeBD ; owl:allValuesFrom ?superclase ] ]
+                    ?categoria rdfs:subClassOf [ rdf:rest* [ owl:onProperty su:esParteDeBD ; owl:allValuesFrom ?proviene ] ]
                     FILTER NOT EXISTS { 
                         ?prop1 a ?otra .
                         ?otra rdfs:subClassOf ?categoria .
@@ -423,12 +434,13 @@ class TstOperation
             foreach ($fourth as $cat) {
                 $temp_3 = array();
                 $temp_3['categoria'] = $cat->categoria->localName();
-                $temp_3['proviene'] = $cat->superclase->localName();
+                $temp_3['proviene'] = $cat->proviene->localName();
                 array_push($cats, $temp_3);
             }
             $temp['categorias'] = $cats;
 
 
+            // Imagenes
             $fifth = $this->endpoint->query("
                 SELECT ?sujeto ?imagen
                 WHERE {
@@ -447,6 +459,7 @@ class TstOperation
             $temp['imagenes'] = $images;
 
 
+            // Comentarios
             $sixth = $this->endpoint->query("
                 SELECT ?sujeto ?comentario ?base
                 WHERE {
@@ -465,7 +478,6 @@ class TstOperation
                 array_push($comments, $temp_3);
             }
             $temp['comentarios'] = $comments;
-
 
             array_push($points, $temp);
         }
