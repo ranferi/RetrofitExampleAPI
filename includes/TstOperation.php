@@ -201,11 +201,8 @@ class TstOperation
         return false;
     }
 
-    //Method to get all users
-
     function getMessages($userid)
     {
-
         $result = $this->endpoint->query("
         SELECT ?sujeto ?from_user ?user ?title ?mensaje ?date 
         WHERE {
@@ -483,4 +480,10 @@ class TstOperation
         }
         return $points;
     }
+
+
+    function siteVisited() {}
+
+    function siteLiked() {}
+
 }
