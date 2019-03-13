@@ -4,7 +4,6 @@ class TstOperation
 {
     private $gs;
     private $endpoint;
-    private $client;
 
     function __construct()
     {
@@ -24,6 +23,7 @@ class TstOperation
 
     /***
      * Crea un usuario en la TripleStore
+     *
      * @param $usuario
      * @param $email
      * @param $password
@@ -38,7 +38,7 @@ class TstOperation
             $pass_md5 = md5($password);
             $id = mt_rand(700000, 800000);
 
-            while ($this->checkIDExist($id)) {
+            while ($this->checkIDExist($id, "user")) {
                 $id = mt_rand(700000, 800000);
             }
             $resource = "su:user_" . $id;
@@ -62,6 +62,7 @@ class TstOperation
 
     /***
      * Método para revisar si el correo ya existe en ontología
+     *
      * @param $email
      * @return bool
      */
@@ -77,6 +78,7 @@ class TstOperation
 
     /***
      * Método para revisar si el correo ya existe en ontología
+     *
      * @param $user
      * @return bool
      */
@@ -91,24 +93,10 @@ class TstOperation
         return $result->numRows() > 0;
     }
 
-    /***
-     * Método para revisar si existe ya un ID en la ontología
-     * @param $id
-     * @return bool
-     */
-    function checkIDExist($id)
-    {
-        $result = $this->endpoint->query(
-            'SELECT * WHERE {' .
-            ' ?usuario su:idUsuario ' . $id . ' .' .
-            '}'
-        );
-
-        return $result->numRows() > 0;
-    }
 
     /**
      * Método para 'logear' usuario
+     *
      * @param $email
      * @param $pass
      * @return bool
@@ -130,6 +118,7 @@ class TstOperation
 
     /***
      * Método para actualizar al usuario
+     * 
      * @param $id
      * @param $usuario
      * @param $email
@@ -417,5 +406,82 @@ class TstOperation
     function siteVisited() {}
 
     function siteLiked() {}
+
+    function insertUserRatingSite($id, $idSitio, $liked, $price, $comment) {
+        $id_r1 = $this->createID(200000, 300000, "user_place");
+        $id_r2 = $this->createID(300000, 400000, "rating");
+        $id_r3 = $this->createID(400000, 500000, "comment");
+
+        $resource1 = "su:r_user_place_" . $id_r1;
+        $resource2 = "su:r_user_rating_" . $id_r2;
+        $resource3 = "su:r_user_comment_" . $id_r3;
+        $resource4 = "su:place_" . $idSitio;
+
+        $result = $this->endpoint->query("SELECT ?s WHERE {
+          ?s su:idUsuario \"$id \" . }"
+        );
+        $user = $result->user->getValue();
+
+        $this->endpoint->update("INSERT DATA {
+            \"$user\" su:visito \"$resource1\" .
+            \"$resource1\" a su:RelacionUsuarioSitio .
+            \"$resource1\" su:sitioVisitado \"$resource4\" .
+            \"$resource1\" su:daCalificacionPrecio \"$resource2\"  .
+            \"$resource1\" su:dejaComentario \"$resource3\"  .
+            \"$resource1\" su:leGusto \"$liked\"^^xsd:boolean .
+            
+            \"$resource2\" a su:RelacionUsuarioCalificacionPrecio .
+            \"$resource2\" su:calificacionDeUsuarioPrecio \"$price\" .
+            
+            \"$resource3\" a su:RelacionUsuarioComentario .
+            \"$resource3\" su:conComentario \"$comment\" .
+                    
+            }"
+        );
+    }
+
+    /**
+     * Método para crear un ID en la ontología
+     *
+     * @param $lower
+     * @param $upper
+     * @param $type
+     * @return int
+     */
+    function createID($lower, $upper, $type)
+    {
+        $id = mt_rand($lower, $upper);
+        while ($this->checkIDExist($id, $type)) {
+            $id = mt_rand($lower, $upper);
+        }
+        return $id;
+    }
+
+    /***
+     * Método para revisar si existe ya un ID en la ontología
+     *
+     * @param $id
+     * @return bool
+     */
+    function checkIDExist($id, $type)
+    {
+        $query = "";
+        switch ($type) {
+            case "user":
+                $query = "SELECT * WHERE { ?s su:idUsuario \"$id\" . }";
+                break;
+            case "user_place":
+                $query = "SELECT * WHERE { ?s su:visito su:r_user_place_\"$id\" . }";
+                break;
+            case "rating":
+                $query = "SELECT * WHERE { ?s su:daCalificacionPrecio su:r_user_rating_\"$id\" . }";
+                break;
+            case "comment":
+                $query = "SELECT * WHERE { ?s su:dejaComentario su:r_user_comment_\"$id\" . }";
+                break;
+        }
+        $result = $this->endpoint->query($query);
+        return $result->numRows() > 0;
+    }
 
 }
