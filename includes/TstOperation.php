@@ -16,16 +16,10 @@ class TstOperation
         EasyRdf_Namespace::set('rdfs', 'http://www.w3.org/2000/01/rdf-schema#');
         EasyRdf_Namespace::set('owl', 'http://www.w3.org/2002/07/owl#');
 
-        #$config = array("timeout"=>100, "maxredirects" => 6);
-        #EasyRdf_Http::setDefaultHttpClient(
-        #     $this->client = new EasyRdf_Http_Client(null, $config)
-        # );
-        # $this->client->setHeaders('Authorization', 'Basic ' . base64_encode("admin:admin"));
         $this->gs = new  EasyRdf_GraphStore('http://localhost:3030/repositories/prueba3/rdf-graphs/service');
 
         $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/prueba3",
             "http://localhost:3030/repositories/prueba3/statements");
-
     }
 
     /***
@@ -66,7 +60,6 @@ class TstOperation
         return USER_EXIST;
     }
 
-
     /***
      * Método para revisar si el correo ya existe en ontología
      * @param $email
@@ -79,10 +72,8 @@ class TstOperation
             ' ?usuario su:email "' . $email . '" ' .
             '}'
         );
-
         return $result->numRows() > 0;
     }
-
 
     /***
      * Método para revisar si el correo ya existe en ontología
@@ -137,32 +128,6 @@ class TstOperation
         return $result->numRows()  > 0;
     }
 
-    //Method to get messages of a particular user
-    function sendMessage($from, $to, $title, $message)
-    {
-        $id = mt_rand(100000, 200000);
-
-         while ($this->idMessageExist($id)) {
-            $id = mt_rand(100000, 200000);
-        }
-        $resource = "su:message_" . $id;
-
-        $graph = new EasyRdf_Graph();
-        $graph->add($resource, 'su:titulo', $title);
-        $graph->add($resource, 'su:mensaje', $message );
-        $graph->add($resource, 'su:idMensaje', $id );
-        $graph->add($resource, 'su:fecha', date("c"));
-        $graph->addResource($resource, 'su:deUsuario', 'su:user_' . $from);
-        $graph->addResource($resource, 'su:paraUsuario', 'su:user_' . $to);
-        $response = $this->gs->insertIntoDefault($graph);
-
-
-        if ($response->isSuccessful())
-            return true;
-        return false;
-
-    }
-
     /***
      * Método para actualizar al usuario
      * @param $id
@@ -200,38 +165,6 @@ class TstOperation
             return true;
         return false;
     }
-
-    function getMessages($userid)
-    {
-        $result = $this->endpoint->query("
-        SELECT ?sujeto ?from_user ?user ?title ?mensaje ?date 
-        WHERE {
-                ?sujeto su:idUsuario " . $userid . " .
-                ?sujeto su:usuario ?user .
-                ?mensaje_res su:paraUsuario ?sujeto .
-                ?mensaje_res su:deUsuario ?from .
-                ?from su:usuario ?from_user .
-                ?mensaje_res su:titulo ?title .
-                ?mensaje_res su:fecha ?date .
-                ?mensaje_res su:mensaje ?mensaje .
-        }"
-        );
-
-        $messages = array();
-
-        foreach ($result as $message) {
-            $temp = array();
-            $temp['from'] = $message->from_user->getValue();
-            $temp['to'] = $message->user->getValue();
-            $temp['title'] = $message->title->getValue();
-            $temp['message'] = $message->mensaje->getValue();
-            $temp['sent'] = $message->date->getValue();
-            array_push($messages, $temp);
-        }
-
-        return $messages;
-    }
-
 
     /**
      * Método para obtener un usuario por su email
@@ -480,7 +413,6 @@ class TstOperation
         }
         return $points;
     }
-
 
     function siteVisited() {}
 
