@@ -118,7 +118,7 @@ class TstOperation
 
     /***
      * Método para actualizar al usuario
-     * 
+     *
      * @param $id
      * @param $usuario
      * @param $email
@@ -407,37 +407,60 @@ class TstOperation
 
     function siteLiked() {}
 
-    function insertUserRatingSite($id, $idSitio, $liked, $price, $comment) {
+    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) {
+        $relacion = $this->checkIfSiteVisited($id);
+        if (!empty($relacion)) {
+
+            $query = "SELECT ?s ?p WHERE { ?s su:idUsuario " . strval($id) . " . ?s su:visito ?p . }";
+            $result = $this->endpoint->query($query);
+        }
         $id_r1 = $this->createID(200000, 300000, "user_place");
         $id_r2 = $this->createID(300000, 400000, "rating");
         $id_r3 = $this->createID(400000, 500000, "comment");
 
-        $resource1 = "su:r_user_place_" . $id_r1;
-        $resource2 = "su:r_user_rating_" . $id_r2;
-        $resource3 = "su:r_user_comment_" . $id_r3;
-        $resource4 = "su:place_" . $idSitio;
+        $resource1 = "su:r_user_place_" . strval($id_r1);
+        $resource2 = "su:r_user_rating_" . strval($id_r2);
+        $resource3 = "su:r_user_comment_" . strval($id_r3);
+        $resource4 = "su:place_" . strval($idPlace);
 
-        $result = $this->endpoint->query("SELECT ?s WHERE {
-          ?s su:idUsuario \"$id \" . }"
-        );
-        $user = $result->user->getValue();
+        $query = "SELECT ?s WHERE {
+          ?s su:idUsuario " . strval($id) .  " . }";
+        $result = $this->endpoint->query($query);
+        $user = "";
+        if ($result->numRows() > 0 ) {
+            $user = $result->current()->s->shorten();
+        }
 
-        $this->endpoint->update("INSERT DATA {
-            \"$user\" su:visito \"$resource1\" .
-            \"$resource1\" a su:RelacionUsuarioSitio .
-            \"$resource1\" su:sitioVisitado \"$resource4\" .
-            \"$resource1\" su:daCalificacionPrecio \"$resource2\"  .
-            \"$resource1\" su:dejaComentario \"$resource3\"  .
-            \"$resource1\" su:leGusto \"$liked\"^^xsd:boolean .
+        $string = "INSERT DATA {
+            $user su:visito $resource1 .
+            $resource1 a su:RelacionUsuarioSitio .
+            $resource1 su:sitioVisitado $resource4 .
+            $resource1 su:daCalificacionPrecio $resource2  .
+            $resource1 su:dejaComentario $resource3  .
+            $resource1 su:leGusto \"$liked\"^^xsd:boolean .
             
-            \"$resource2\" a su:RelacionUsuarioCalificacionPrecio .
-            \"$resource2\" su:calificacionDeUsuarioPrecio \"$price\" .
+            $resource2 a su:RelacionUsuarioCalificacionPrecio .
+            $resource2 su:calificacionDeUsuarioPrecio $price .
             
-            \"$resource3\" a su:RelacionUsuarioComentario .
-            \"$resource3\" su:conComentario \"$comment\" .
+            $resource3 a su:RelacionUsuarioComentario .
+            $resource3 su:conComentario \"$comment\" .
                     
-            }"
-        );
+            }";
+
+        // $this->endpoint->update($string);
+        return null;
+    }
+
+    function checkIfSiteVisited($id) {
+        $query = "SELECT ?s ?p WHERE { ?s su:idUsuario " . strval($id) . " . ?s su:visito ?p . }";
+        $result = $this->endpoint->query($query);
+        // var_dump($result->current());
+        $relacion = array();
+        if ($result->numRows() > 0) {
+            $relacion["usuario"] = $result->current()->s->shorten();
+            $relacion["sitio"] = $result->current()->p->shorten();
+        }
+        return $relacion;
     }
 
     /**
@@ -468,16 +491,16 @@ class TstOperation
         $query = "";
         switch ($type) {
             case "user":
-                $query = "SELECT * WHERE { ?s su:idUsuario \"$id\" . }";
+                $query = "SELECT * WHERE { ?s su:idUsuario " . strval($id) . " . }";
                 break;
             case "user_place":
-                $query = "SELECT * WHERE { ?s su:visito su:r_user_place_\"$id\" . }";
+                $query = "SELECT * WHERE { ?s su:visito su:r_user_place_" . strval($id) . " . }";
                 break;
             case "rating":
-                $query = "SELECT * WHERE { ?s su:daCalificacionPrecio su:r_user_rating_\"$id\" . }";
+                $query = "SELECT * WHERE { ?s su:daCalificacionPrecio su:r_user_rating_" . strval($id) . " . }";
                 break;
             case "comment":
-                $query = "SELECT * WHERE { ?s su:dejaComentario su:r_user_comment_\"$id\" . }";
+                $query = "SELECT * WHERE { ?s su:dejaComentario su:r_user_comment_" . strval($id) . " . }";
                 break;
         }
         $result = $this->endpoint->query($query);
