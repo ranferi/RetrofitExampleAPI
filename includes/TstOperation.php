@@ -408,57 +408,95 @@ class TstOperation
     function siteLiked() {}
 
     function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) {
-        $relacion = $this->checkIfSiteVisited($id);
-        if (!empty($relacion)) {
+        $idPlace = 14001;
+        $insert_query = "";
+        $recursos = $this->checkIfSiteVisited($id, $idPlace);
+        if (!empty($recursos)) {
+            $query1 = "SELECT ?s ?p WHERE { ?s su:idUsuario " . strval($id) . " . ?s su:visito ?p . }";
+            $res_sitio = $this->endpoint->query($query1);
+            $recursos["usuario_sitio"] = $res_sitio->current()->p->shorten();
 
-            $query = "SELECT ?s ?p WHERE { ?s su:idUsuario " . strval($id) . " . ?s su:visito ?p . }";
-            $result = $this->endpoint->query($query);
-        }
-        $id_r1 = $this->createID(200000, 300000, "user_place");
-        $id_r2 = $this->createID(300000, 400000, "rating");
-        $id_r3 = $this->createID(400000, 500000, "comment");
-
-        $resource1 = "su:r_user_place_" . strval($id_r1);
-        $resource2 = "su:r_user_rating_" . strval($id_r2);
-        $resource3 = "su:r_user_comment_" . strval($id_r3);
-        $resource4 = "su:place_" . strval($idPlace);
-
-        $query = "SELECT ?s WHERE {
-          ?s su:idUsuario " . strval($id) .  " . }";
-        $result = $this->endpoint->query($query);
-        $user = "";
-        if ($result->numRows() > 0 ) {
-            $user = $result->current()->s->shorten();
-        }
-
-        $string = "INSERT DATA {
-            $user su:visito $resource1 .
-            $resource1 a su:RelacionUsuarioSitio .
-            $resource1 su:sitioVisitado $resource4 .
-            $resource1 su:daCalificacionPrecio $resource2  .
-            $resource1 su:dejaComentario $resource3  .
-            $resource1 su:leGusto \"$liked\"^^xsd:boolean .
-            
-            $resource2 a su:RelacionUsuarioCalificacionPrecio .
-            $resource2 su:calificacionDeUsuarioPrecio $price .
-            
-            $resource3 a su:RelacionUsuarioComentario .
-            $resource3 su:conComentario \"$comment\" .
-                    
+            $query2 = "SELECT ?s ?o
+            WHERE {
+                VALUES (?s) { (" . $recursos["usuario_sitio"] . ") }
+                ?s ?p ?o .
+                OPTIONAL {
+                    ?o ?p1 ?o1 .
+                    FILTER(isBlank(?o))
+                }
+                FILTER(isUri(?o) && STRSTARTS(STR(?p), STR(su:)))
             }";
+            $res_rel = $this->endpoint->query($query2);
+
+            $insert_query .= "";
+
+            foreach ($res_rel as $prop) {
+                $temp = $prop->o->shorten();
+                $type = $this->reverse_strrchr($temp, "_", 1);
+                 switch ($type) {
+                    case "su:r_user_rating_":
+                        $recursos["usuario_calif"] = $temp;
+                        break;
+                    case "su:r_user_comment_":
+                        $recursos["usuario_comen"] = $temp;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            // echo '<pre>' . var_export($recursos, true) . '</pre>';
+        } else {
+            $query = "SELECT ?s WHERE { ?s su:idUsuario " . strval($id) .  " . }";
+            $result = $this->endpoint->query($query);
+            if ($result->numRows() > 0 ) {
+                $recursos["usuario"]  = $result->current()->s->shorten();
+            }
+
+            $id_r1 = $this->createID(200000, 300000, "user_place");
+            $id_r2 = $this->createID(300000, 400000, "rating");
+            $id_r3 = $this->createID(400000, 500000, "comment");
+
+            $recursos["sitio"] = "su:place_" . strval($idPlace);
+            $recursos["usuario_sitio"] = "su:r_user_place_" . strval($id_r1);
+            $recursos["usuario_calif"] = "su:r_user_rating_" . strval($id_r2);
+            $recursos["usuario_comen"] = "su:r_user_comment_" . strval($id_r3);
+            // echo '<pre>' . var_export($recursos, true) . '</pre>';
+        }
+        
+        $insert_query = "INSERT DATA {\n" .
+            $recursos["usuario"] . " su:visito " . $recursos["usuario_sitio"] . " .\n" .
+
+            $recursos["usuario_sitio"] . " a su:RelacionUsuarioSitio .\n" .
+            $recursos["usuario_sitio"] . " su:sitioVisitado " . $recursos["sitio"] . " .\n" .
+            $recursos["usuario_sitio"] . " su:daCalificacionPrecio " . $recursos["usuario_calif"] . " .\n" .
+            $recursos["usuario_sitio"] . " su:dejaComentario " . $recursos["usuario_comen"] . " .\n" .
+            $recursos["usuario_sitio"] . " su:leGusto \"" . $liked . "\"^^xsd:boolean .\n" .
+            
+            $recursos["usuario_calif"] . " a su:RelacionUsuarioCalificacionPrecio .\n" .
+            $recursos["usuario_calif"] . " su:calificacionDeUsuarioPrecio " . $price . " .\n" .
+            
+            $recursos["usuario_comen"] . " a su:RelacionUsuarioComentario .\n" .
+            $recursos["usuario_comen"] . " su:conComentario \"" . $comment . "\" .\n" .
+                    
+            "}";
+        echo '<pre>' . var_export($insert_query, true) . '</pre>';
 
         // $this->endpoint->update($string);
         return null;
     }
 
-    function checkIfSiteVisited($id) {
-        $query = "SELECT ?s ?p WHERE { ?s su:idUsuario " . strval($id) . " . ?s su:visito ?p . }";
+    function checkIfSiteVisited($id, $idPlace) {
+        $query = "SELECT ?s ?p 
+        WHERE { 
+            ?s su:idUsuario " . strval($id) . " . 
+            ?s su:visito ?p .
+            ?p su:sitioVisitado su:place_" . strval($idPlace) . " . 
+        }";
         $result = $this->endpoint->query($query);
-        // var_dump($result->current());
         $relacion = array();
         if ($result->numRows() > 0) {
             $relacion["usuario"] = $result->current()->s->shorten();
-            $relacion["sitio"] = $result->current()->p->shorten();
+            $relacion["sitio"] = "su:place_" . strval($idPlace);
         }
         return $relacion;
     }
@@ -505,6 +543,10 @@ class TstOperation
         }
         $result = $this->endpoint->query($query);
         return $result->numRows() > 0;
+    }
+
+    function reverse_strrchr($haystack, $needle, $trail) {
+        return strrpos($haystack, $needle) ? substr($haystack, 0, strrpos($haystack, $needle) + $trail) : false;
     }
 
 }
