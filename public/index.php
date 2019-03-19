@@ -98,6 +98,12 @@ $app->post('/register', function (Request $request, Response $response) {
 
 });
 
+$app->get('/pass', function (Request $request, Response $response) {
+
+$str = "incubo";
+echo md5($str);
+});
+
 /***
  * Ruta para 'logear' al usuario
  */
@@ -363,9 +369,11 @@ $app->get('/query/{id}', function (Request $request, Response $response) {
         if ($tst->insertUserRatingSite($id, $id_place, $liked, $price, $comment)) {
             $response_data['error'] = false;
             $response_data['message'] = 'Se envió tu opinión. ¡Gracias!';
+            echo '<pre>' . var_export($response_data, true) . '</pre>';
         } else {
             $response_data['error'] = true;
             $response_data['message'] = 'Hubo un error, intenta de nuevo.';
+            echo '<pre>' . var_export($response_data, true) . '</pre>';
         }
     }
     return null;

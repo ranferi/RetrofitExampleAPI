@@ -15,6 +15,11 @@ class TstOperation
         EasyRdf_Namespace::set('rdfs', 'http://www.w3.org/2000/01/rdf-schema#');
         EasyRdf_Namespace::set('owl', 'http://www.w3.org/2002/07/owl#');
 
+        $config = array("timeout"=>500, "maxredirects" => 6);
+        EasyRdf_Http::setDefaultHttpClient(
+             $this->client = new EasyRdf_Http_Client(null, $config)
+         );
+
         $this->gs = new  EasyRdf_GraphStore('http://localhost:3030/repositories/prueba3/rdf-graphs/service');
 
         $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/prueba3",
@@ -150,9 +155,7 @@ class TstOperation
             }"
         );
 
-        if ($response->isSuccessful())
-            return true;
-        return false;
+        return $response->isSuccessful();
     }
 
     /**
@@ -403,69 +406,47 @@ class TstOperation
         return $points;
     }
 
-    function siteVisited() {}
-
-    function siteLiked() {}
-
     function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) {
         $idPlace = 14001;
-        $insert_query = "";
+        $delete_query = "";
         $recursos = $this->checkIfSiteVisited($id, $idPlace);
         if (!empty($recursos)) {
-            $query1 = "SELECT ?s ?p WHERE { ?s su:idUsuario " . strval($id) . " . ?s su:visito ?p . }";
-            $res_sitio = $this->endpoint->query($query1);
-            $recursos["usuario_sitio"] = $res_sitio->current()->p->shorten();
-
-            $query2 = "SELECT ?s ?o
-            WHERE {
-                VALUES (?s) { (" . $recursos["usuario_sitio"] . ") }
-                ?s ?p ?o .
-                OPTIONAL {
-                    ?o ?p1 ?o1 .
-                    FILTER(isBlank(?o))
-                }
-                FILTER(isUri(?o) && STRSTARTS(STR(?p), STR(su:)))
-            }";
-            $res_rel = $this->endpoint->query($query2);
-
-            $insert_query .= "";
-
+            // existe el vinculo de un usuario con un sitio visitado
+            $query = "SELECT DISTINCT ?o 
+                      WHERE {" . $this->stringWhereQuery($id, $idPlace) . 
+                      " FILTER(isUri(?o1) && STRSTARTS(STR(?o1), STR(su:))) }";
+            $res_rel = $this->endpoint->query($query);
+            
+            $r = array();
             foreach ($res_rel as $prop) {
-                $temp = $prop->o->shorten();
-                $type = $this->reverse_strrchr($temp, "_", 1);
-                 switch ($type) {
-                    case "su:r_user_rating_":
-                        $recursos["usuario_calif"] = $temp;
-                        break;
-                    case "su:r_user_comment_":
-                        $recursos["usuario_comen"] = $temp;
-                        break;
-                    default:
-                        break;
-                }
+                $r = array_merge($r, $this->typeBlankNode($prop->o->getUri()));
             }
-            // echo '<pre>' . var_export($recursos, true) . '</pre>';
+            $recursos = array_merge($recursos, $r);
+
+            $delete_query .= "DELETE { ?u su:visito ?r . ?r ?p ?o . ?o ?p1 ?o1 . }";
+            $delete_query .= "WHERE {". $this->stringWhereQuery($id, $idPlace) . " }";
+            $response = $this->endpoint->update($delete_query);
+            if (!$response->isSuccessful()) {
+                return false;
+            }
+            echo '<pre>' . var_export($response->isSuccessful(), true) . '</pre>';
         } else {
-            $query = "SELECT ?s WHERE { ?s su:idUsuario " . strval($id) .  " . }";
-            $result = $this->endpoint->query($query);
-            if ($result->numRows() > 0 ) {
-                $recursos["usuario"]  = $result->current()->s->shorten();
-            }
+            // no existe un sitio visitado
+            $recursos["usuario"]  = "su:user_" . strval($id);
 
             $id_r1 = $this->createID(200000, 300000, "user_place");
             $id_r2 = $this->createID(300000, 400000, "rating");
             $id_r3 = $this->createID(400000, 500000, "comment");
 
             $recursos["sitio"] = "su:place_" . strval($idPlace);
-            $recursos["usuario_sitio"] = "su:r_user_place_" . strval($id_r1);
-            $recursos["usuario_calif"] = "su:r_user_rating_" . strval($id_r2);
-            $recursos["usuario_comen"] = "su:r_user_comment_" . strval($id_r3);
-            // echo '<pre>' . var_export($recursos, true) . '</pre>';
+            $recursos["usuario_sitio"] = "_:r_user_place_" . strval($id_r1);
+            $recursos["usuario_calif"] = "_:r_user_rating_" . strval($id_r2);
+            $recursos["usuario_comen"] = "_:r_user_comment_" . strval($id_r3);
+            echo '<pre>' . var_export($recursos, true) . '</pre>';
         }
         
         $insert_query = "INSERT DATA {\n" .
             $recursos["usuario"] . " su:visito " . $recursos["usuario_sitio"] . " .\n" .
-
             $recursos["usuario_sitio"] . " a su:RelacionUsuarioSitio .\n" .
             $recursos["usuario_sitio"] . " su:sitioVisitado " . $recursos["sitio"] . " .\n" .
             $recursos["usuario_sitio"] . " su:daCalificacionPrecio " . $recursos["usuario_calif"] . " .\n" .
@@ -481,8 +462,8 @@ class TstOperation
             "}";
         echo '<pre>' . var_export($insert_query, true) . '</pre>';
 
-        // $this->endpoint->update($string);
-        return null;
+        $response2 = $this->endpoint->update($insert_query);
+        return $response2 ;
     }
 
     function checkIfSiteVisited($id, $idPlace) {
@@ -543,6 +524,39 @@ class TstOperation
         }
         $result = $this->endpoint->query($query);
         return $result->numRows() > 0;
+    }
+
+    function typeBlankNode($temp) {
+        $blank = substr($temp, strrpos($temp, "r_user_"));
+        $type  = $this->reverse_strrchr($blank, "_", 1);
+        $r = array();
+        switch ($type) {
+                    case "r_user_rating_":
+                        $r["usuario_calif"] = "_:" . $blank;
+                        return $r;
+                    case "r_user_comment_":
+                        $r["usuario_comen"] = "_:" . $blank;
+                        return $r;
+                    case "r_user_place_":
+                        $r["usuario_sitio"] = "_:" . $blank;
+                        return $r;
+                    default:
+                        $r["error"] = true;
+                        return $r;
+                }
+    }
+
+    function stringWhereQuery($id, $idPlace) {
+        $query = "?u su:idUsuario " . strval($id) . " .
+                ?u su:visito ?r .
+                ?r su:sitioVisitado ?s .
+                ?s su:idSitio " . strval($idPlace) . " .
+                ?r ?p ?o .
+                OPTIONAL {
+                    ?o ?p1 ?o1 .
+                    FILTER(isBlank(?o))
+                }";
+        return $query;
     }
 
     function reverse_strrchr($haystack, $needle, $trail) {
