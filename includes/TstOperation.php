@@ -407,8 +407,6 @@ class TstOperation
     }
 
     function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) {
-        $idPlace = 14001;
-        $delete_query = "";
         $recursos = $this->checkIfSiteVisited($id, $idPlace);
         if (!empty($recursos)) {
             // existe el vinculo de un usuario con un sitio visitado
@@ -426,10 +424,10 @@ class TstOperation
             $delete_query .= "DELETE { ?u su:visito ?r . ?r ?p ?o . ?o ?p1 ?o1 . }";
             $delete_query .= "WHERE {". $this->stringWhereQuery($id, $idPlace) . " }";
             $response = $this->endpoint->update($delete_query);
+            echo '<pre>' . var_export($response->isSuccessful(), true) . '</pre>';
             if (!$response->isSuccessful()) {
                 return false;
             }
-            echo '<pre>' . var_export($response->isSuccessful(), true) . '</pre>';
         } else {
             // no existe un sitio visitado
             $recursos["usuario"]  = "su:user_" . strval($id);
@@ -452,18 +450,13 @@ class TstOperation
             $recursos["usuario_sitio"] . " su:daCalificacionPrecio " . $recursos["usuario_calif"] . " .\n" .
             $recursos["usuario_sitio"] . " su:dejaComentario " . $recursos["usuario_comen"] . " .\n" .
             $recursos["usuario_sitio"] . " su:leGusto \"" . $liked . "\"^^xsd:boolean .\n" .
-            
             $recursos["usuario_calif"] . " a su:RelacionUsuarioCalificacionPrecio .\n" .
-            $recursos["usuario_calif"] . " su:calificacionDeUsuarioPrecio " . $price . " .\n" .
-            
+            $recursos["usuario_calif"] . " su:calificacionDeUsuarioPrecio su:" . $price . " .\n" .
             $recursos["usuario_comen"] . " a su:RelacionUsuarioComentario .\n" .
-            $recursos["usuario_comen"] . " su:conComentario \"" . $comment . "\" .\n" .
-                    
-            "}";
+            $recursos["usuario_comen"] . " su:conComentario \"" . $comment . "\" .\n" . "}";
         echo '<pre>' . var_export($insert_query, true) . '</pre>';
 
-        $response2 = $this->endpoint->update($insert_query);
-        return $response2 ;
+        return $this->endpoint->update($insert_query);
     }
 
     function checkIfSiteVisited($id, $idPlace) {

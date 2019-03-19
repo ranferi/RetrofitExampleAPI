@@ -279,18 +279,6 @@ $app->get('/nlp', function (Request $request, Response $response) {
 });
 
 /**
- * Se traen todos los mensajes de un usuario
- */
-/*$app->get('/messages/{id}', function (Request $request, Response $response) {
-    $userid = $request->getAttribute('id');
-    $tst = new TstOperation();
-    $messages = $tst->getMessages($userid);
-    // print_r($userid);
-    return $response->withJson(array("messages" => $messages));
-
-});*/
-
-/**
  * Se actualiza la información de un usuario
  */
 $app->post('/update/{id}', function (Request $request, Response $response) {
@@ -353,7 +341,7 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
     }
 });*/
 
-$app->get('/query/{id}', function (Request $request, Response $response) {
+$app->post('/query/{id}', function (Request $request, Response $response) {
     $params["error"] = false;
     if (!$params["error"]) {
         $id = $request->getAttribute('id');
