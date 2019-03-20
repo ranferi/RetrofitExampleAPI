@@ -192,6 +192,7 @@ class TstOperation
 
     /**
      * Método para obtener un usuario por su email
+     *
      * @param $email
      * @return array
      */
@@ -206,11 +207,9 @@ class TstOperation
             ?sujeto su:apellidoPaterno ?apellidoPaterno .
             ?sujeto su:apellidoMaterno ?apellidoMaterno .
             ?sujeto su:usuario ?usuario .
-        }"
-        );
+        }");
 
         $user = array();
-
         if ($result->numRows() == 1) {
             $user['id'] = $result->current()->id->getValue();
             $user['name'] = $result->current()->nombre->getValue();
@@ -219,13 +218,12 @@ class TstOperation
             $user['email'] = $email;
             $user['user'] = $result->current()->usuario->getValue();
         }
-        // print_r($user);
-
         return $user;
     }
 
     /**
      * Método para enlistar todos los usuarios en la ontología
+     *
      * @return array
      */
     function getAllUsers()
@@ -406,7 +404,8 @@ class TstOperation
         return $points;
     }
 
-    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) {
+    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) 
+    {
         $recursos = $this->checkIfSiteVisited($id, $idPlace);
         if (!empty($recursos)) {
             // existe el vinculo de un usuario con un sitio visitado
@@ -492,7 +491,7 @@ class TstOperation
         return $id;
     }
 
-    /***
+    /**
      * Método para revisar si existe ya un ID en la ontología
      *
      * @param $id
@@ -519,7 +518,8 @@ class TstOperation
         return $result->numRows() > 0;
     }
 
-    function typeBlankNode($temp) {
+    function typeBlankNode($temp) 
+    {
         $blank = substr($temp, strrpos($temp, "r_user_"));
         $type  = $this->reverse_strrchr($blank, "_", 1);
         $r = array();
@@ -539,7 +539,8 @@ class TstOperation
                 }
     }
 
-    function stringWhereQuery($id, $idPlace) {
+    function stringWhereQuery($id, $idPlace) 
+    {
         $query = "?u su:idUsuario " . strval($id) . " .
                 ?u su:visito ?r .
                 ?r su:sitioVisitado ?s .
@@ -552,7 +553,8 @@ class TstOperation
         return $query;
     }
 
-    function reverse_strrchr($haystack, $needle, $trail) {
+    function reverse_strrchr($haystack, $needle, $trail) 
+    {
         return strrpos($haystack, $needle) ? substr($haystack, 0, strrpos($haystack, $needle) + $trail) : false;
     }
 

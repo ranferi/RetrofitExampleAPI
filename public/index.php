@@ -346,10 +346,10 @@ $app->post('/query/{id}', function (Request $request, Response $response) {
     if (!$params["error"]) {
         $id = $request->getAttribute('id');
         $request_data = $request->getParsedBody();
-        $id_place = $request_data['id_place'];
-        $liked = $request_data['liked'];
-        $price = $request_data['price'];
-        $comment = $request_data['comment'];
+        $id_place = $request_data['id_sitio'];
+        $liked = $request_data['gusto'];
+        $price = $request_data['precio'];
+        $comment = $request_data['commentario'];
 
         $tst = new TstOperation();
         $response_data = array();
