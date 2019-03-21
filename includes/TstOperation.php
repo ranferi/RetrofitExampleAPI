@@ -397,6 +397,34 @@ class TstOperation
                 $temp_3['proviene'] = $comment->base->localName();
                 array_push($comments, $temp_3);
             }
+
+            $sixth->rewind();
+
+            $seventh = $this->endpoint->query("
+                SELECT ?usuario ?comentario ?id ?usuario ?correo 
+                WHERE {
+                    ?u su:sitioVisitado " . strval($sixth->current()->sujeto->shorten()) . " .
+                    ?user su:visito ?u .
+                    ?u su:dejaComentario/su:conComentario ?comentario .
+                    ?user su:idUsuario ?id .
+                    ?user su:email ?correo .
+                    ?user su:usuario ?usuario .
+                }
+            ");
+
+            // echo '<pre>' . var_export($seventh, true) . '</pre>';
+            foreach ($seventh as $comment) {
+                $temp_4 = array();
+                $temp_5 = array();
+                $temp_4['comentario'] = $comment->comentario->getValue();
+
+                $temp_5['id'] = $comment->id->getValue();
+                $temp_5['usuario'] = $comment->usuario->getValue();
+                $temp_5['email'] = $comment->correo->getValue();
+                $temp_4['user'] = $temp_5;
+                array_push($comments, $temp_4);
+            }
+
             $temp['comentarios'] = $comments;
 
             array_push($points, $temp);
@@ -420,7 +448,7 @@ class TstOperation
             }
             $recursos = array_merge($recursos, $r);
 
-            $delete_query .= "DELETE { ?u su:visito ?r . ?r ?p ?o . ?o ?p1 ?o1 . }";
+            $delete_query = "DELETE { ?u su:visito ?r . ?r ?p ?o . ?o ?p1 ?o1 . }";
             $delete_query .= "WHERE {". $this->stringWhereQuery($id, $idPlace) . " }";
             $response = $this->endpoint->update($delete_query);
             echo '<pre>' . var_export($response->isSuccessful(), true) . '</pre>';
