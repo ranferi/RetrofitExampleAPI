@@ -250,6 +250,40 @@ class TstOperation
         return $users;
     }
 
+    function getAllVisitedPlacesByUser($id) {
+        $user = $this->endpoint->query("
+        SELECT ?sujeto ?nombre ?usuario  ?email
+        WHERE {
+            ?sujeto su:idUsuario " . strval($id) . " .
+            ?sujeto su:email ?email .
+            ?sujeto su:nombre ?nombre .
+            ?sujeto su:usuario ?usuario .
+        }");
+
+        $temp = array();
+        $temp['id'] = $user->id->getValue();
+        $temp['name'] = $user->nombre->getValue();
+        $temp['usuario'] = $user->usuario->getValue();
+        $temp['email'] = $user->email->getValue();
+        $temp['visito'] = array();
+
+        $visited = $this->endpoint->query("
+        SELECT ?sujeto ?nombre ?usuario  ?email
+        WHERE {
+            ?sujeto su:idUsuario " . strval($id) . " .
+            ?sujeto su:visito/su:sitioVisitado ?sitio .
+            ?sujeto su:visito/su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
+            ?sujeto su:visito/su:dejaComentario/su:conComentario ?comentario .
+            ?sujeto su:visito/su:leGusto ?gusto .
+        }");
+
+        foreach ($visited as $place) {
+            $temp1 = array();
+            $temp_id = $visited->id->getValue();
+        }
+
+    }
+
     function getAllPoints()
     {
         $result = $this->endpoint->query("
