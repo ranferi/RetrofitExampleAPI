@@ -255,33 +255,81 @@ class TstOperation
         SELECT ?sujeto ?nombre ?usuario  ?email
         WHERE {
             ?sujeto su:idUsuario " . strval($id) . " .
-            ?sujeto su:email ?email .
             ?sujeto su:nombre ?nombre .
             ?sujeto su:usuario ?usuario .
+            ?sujeto su:email ?email .
         }");
+        // echo '<pre>' . var_export($user, true) . '</pre>';
 
         $temp = array();
-        $temp['id'] = $user->id->getValue();
-        $temp['name'] = $user->nombre->getValue();
-        $temp['usuario'] = $user->usuario->getValue();
-        $temp['email'] = $user->email->getValue();
+        $temp['id'] = $id;
+        //if (isset($user->current()->nombre))
+        $temp['nombre'] = $user->current()->nombre->getValue();
+        //if (isset($user->current()->usuario))
+        $temp['usuario'] = $user->current()->usuario->getValue();
+        $temp['email'] = $user->current()->email->getValue();
         $temp['visito'] = array();
 
         $visited = $this->endpoint->query("
-        SELECT ?sujeto ?nombre ?usuario  ?email
+        SELECT ?sujeto ?sitio ?precio ?comentario ?gusto
         WHERE {
             ?sujeto su:idUsuario " . strval($id) . " .
-            ?sujeto su:visito/su:sitioVisitado ?sitio .
-            ?sujeto su:visito/su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
-            ?sujeto su:visito/su:dejaComentario/su:conComentario ?comentario .
-            ?sujeto su:visito/su:leGusto ?gusto .
+            ?sujeto su:visito ?a . 
+            ?a su:sitioVisitado ?sitio .
+            ?a su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
+            ?a su:dejaComentario/su:conComentario ?comentario .
+            ?a su:leGusto ?gusto .
         }");
 
+        $temp_1 = array();
         foreach ($visited as $place) {
-            $temp1 = array();
-            $temp_id = $visited->id->getValue();
+            $temp_1['place'] = $place->sitio->shorten();
+            $temp_1['precio'] = $place->precio->shorten();
+            $temp_1['gusto'] = $place->gusto->getValue();
+            $temp_1['comentario'] = $place->comentario->getValue();
+            $temp_1['informacion'] = array();
+
+
+
+            $string = "
+                SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
+                WHERE {
+                    " . $temp_1['place'] . " su:idSitio ?id .
+                    " . $temp_1['place'] . " a [
+                        a owl:Restriction;
+                        owl:onProperty su:tieneUnValorMEDI;
+                        owl:someValuesFrom ?medi
+                    ] .
+                    " . $temp_1['place'] . " su:tienePropiedad/su:direccionSitio ?dir .
+                    " . $temp_1['place'] . " su:tienePropiedad/su:musica ?musica .
+                    OPTIONAL { " . $temp_1['place'] . " su:tienePropiedad/su:latitud ?latitud . }
+                    OPTIONAL { " . $temp_1['place'] . " su:tienePropiedad/su:longitud ?longitud . }
+                }";
+            // echo '<pre>' . var_export($string, true) . '</pre>';
+            $result = $this->endpoint->query($string);
+
+
+
+            $temp_2 = array();
+            $temp_id = $result->current()->id->getValue();
+            $temp_2['id'] = $temp_id;
+            $temp_2['medi'] = $result->current()->medi->localName();
+            if (isset($result->current()->latitud))
+                $temp_2['latitud'] = $result->current()->latitud->getValue();
+            if (isset($result->current()->longitud))
+                $temp_2['longitud'] = $result->current()->longitud->getValue();
+            $temp_2['direccion'] = $result->current()->dir->getValue();
+            $temp_2['musica'] = $result->current()->musica->getValue();
+            // echo '<pre>' . var_export($temp_2, true) . '</pre>';
+            array_push($temp_1['informacion'], $temp_2);
+            array_push($temp['visito'], $temp_1);
         }
 
+
+
+
+        // echo '<pre>' . var_export($temp, true) . '</pre>';
+        return $temp;
     }
 
     function getAllPoints()

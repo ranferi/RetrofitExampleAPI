@@ -311,6 +311,30 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
     }
 });
 
+
+/**
+ * Se actualiza la información de un usuario
+ */
+$app->get('/visited/{id}', function (Request $request, Response $response) {
+    $id = $request->getAttribute('id');
+
+    $tst = new TstOperation();
+    $response_data = array();
+
+  /*  if ($tst->getAllVisitedPlacesByUser($id)) {
+        $response_data['error'] = false;
+        $response_data['message'] = 'Actualización exitosa';
+        // $response_data['user'] = $tst->getUserByEmail($email);
+    } else {
+        $response_data['error'] = true;
+        $response_data['message'] = 'No se actualizó';
+    }*/
+
+//    return $response->withJson($response_data);
+    $places = $tst->getAllVisitedPlacesByUser($id);
+    return $response->withJson(array("usuario" => $places));
+});
+
 /**
  * Se envia un mensaje a un usuario
  */
