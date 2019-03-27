@@ -250,22 +250,20 @@ class TstOperation
         return $users;
     }
 
-    function getAllVisitedPlacesByUser($id) {
+    function getAllVisitedPlacesByUser($id)
+    {
         $user = $this->endpoint->query("
         SELECT ?sujeto ?nombre ?usuario  ?email
         WHERE {
-            ?sujeto su:idUsuario " . strval($id) . " .
+            ?sujeto su:idUsuario " . $id . " .
             ?sujeto su:nombre ?nombre .
             ?sujeto su:usuario ?usuario .
             ?sujeto su:email ?email .
         }");
-        // echo '<pre>' . var_export($user, true) . '</pre>';
-
+        $users = array();
         $temp = array();
-        $temp['id'] = $id;
-        //if (isset($user->current()->nombre))
+        $temp['id'] = intval($id);
         $temp['nombre'] = $user->current()->nombre->getValue();
-        //if (isset($user->current()->usuario))
         $temp['usuario'] = $user->current()->usuario->getValue();
         $temp['email'] = $user->current()->email->getValue();
         $temp['visito'] = array();
@@ -283,32 +281,27 @@ class TstOperation
 
         $temp_1 = array();
         foreach ($visited as $place) {
-            $temp_1['place'] = $place->sitio->shorten();
+            $temp_1['sitio_src'] = $place->sitio->shorten();
             $temp_1['precio'] = $place->precio->shorten();
             $temp_1['gusto'] = $place->gusto->getValue();
             $temp_1['comentario'] = $place->comentario->getValue();
-            $temp_1['informacion'] = array();
-
-
+            $temp_1['sitio'] = array();
 
             $string = "
                 SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
                 WHERE {
-                    " . $temp_1['place'] . " su:idSitio ?id .
-                    " . $temp_1['place'] . " a [
+                    " . $temp_1['sitio_src'] . " su:idSitio ?id .
+                    " . $temp_1['sitio_src'] . " a [
                         a owl:Restriction;
                         owl:onProperty su:tieneUnValorMEDI;
                         owl:someValuesFrom ?medi
                     ] .
-                    " . $temp_1['place'] . " su:tienePropiedad/su:direccionSitio ?dir .
-                    " . $temp_1['place'] . " su:tienePropiedad/su:musica ?musica .
-                    OPTIONAL { " . $temp_1['place'] . " su:tienePropiedad/su:latitud ?latitud . }
-                    OPTIONAL { " . $temp_1['place'] . " su:tienePropiedad/su:longitud ?longitud . }
+                    " . $temp_1['sitio_src'] . " su:tienePropiedad/su:direccionSitio ?dir .
+                    " . $temp_1['sitio_src'] . " su:tienePropiedad/su:musica ?musica .
+                    OPTIONAL { " . $temp_1['sitio_src'] . " su:tienePropiedad/su:latitud ?latitud . }
+                    OPTIONAL { " . $temp_1['sitio_src'] . " su:tienePropiedad/su:longitud ?longitud . }
                 }";
-            // echo '<pre>' . var_export($string, true) . '</pre>';
             $result = $this->endpoint->query($string);
-
-
 
             $temp_2 = array();
             $temp_id = $result->current()->id->getValue();
@@ -321,15 +314,15 @@ class TstOperation
             $temp_2['direccion'] = $result->current()->dir->getValue();
             $temp_2['musica'] = $result->current()->musica->getValue();
             // echo '<pre>' . var_export($temp_2, true) . '</pre>';
-            array_push($temp_1['informacion'], $temp_2);
+            array_push($temp_1['sitio'], $temp_2);
             array_push($temp['visito'], $temp_1);
+
         }
-
-
+        array_push($users, $temp);
 
 
         // echo '<pre>' . var_export($temp, true) . '</pre>';
-        return $temp;
+        return $users;
     }
 
     function getAllPoints()
@@ -352,7 +345,6 @@ class TstOperation
         );
 
         $points = array();
-
         foreach ($result as $place) {
             $temp = array();
             $temp_id = $place->id->getValue();
@@ -414,7 +406,6 @@ class TstOperation
             $temp['calificaciones'] = $ratings;
             $temp['total'] = $total;
 
-
             // Categorias
             $fourth = $this->endpoint->query("
                 SELECT ?categoria ?proviene
@@ -441,7 +432,6 @@ class TstOperation
             }
             $temp['categorias'] = $cats;
 
-
             // Imagenes
             $fifth = $this->endpoint->query("
                 SELECT ?sujeto ?imagen
@@ -459,7 +449,6 @@ class TstOperation
                 array_push($images, $temp_3);
             }
             $temp['imagenes'] = $images;
-
 
             // Comentarios
             $sixth = $this->endpoint->query("

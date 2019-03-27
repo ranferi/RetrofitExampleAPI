@@ -332,7 +332,7 @@ $app->get('/visited/{id}', function (Request $request, Response $response) {
 
 //    return $response->withJson($response_data);
     $places = $tst->getAllVisitedPlacesByUser($id);
-    return $response->withJson($places);
+    return $response->withJson(array("users" => $places));
 });
 
 /**
@@ -421,71 +421,3 @@ function isTheseParametersAvailable($required_fields)
 }
 
 $app->run();
-
-
-
-/**
- * Continents
- */
-SET FOREIGN_KEY_CHECKS=0;
-
--- ----------------------------
--- Table structure for `continents`
-                       -- ----------------------------
-DROP TABLE IF EXISTS `continents`;
-CREATE TABLE `continents` (
-`code` char(2) NOT NULL COMMENT 'Continent code',
-  `name` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
-
-
-CREATE TABLE `Authors`
-(
-`AuthorID` int IDENTITY(1,1) PRIMARY KEY,
- `AuthorName` nvarchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
-CREATE TABLE `Books`
-(
-`BookID` int IDENTITY(1,1) PRIMARY KEY,
- `BookTitle` nvarchar(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
-
-CREATE TABLE `AuthorBook`
-(
-`AuthorID` int NOT NULL,
- `BookID` int NOT NULL,
- CONSTRAINT PK_AuthorBook PRIMARY KEY
-(
-    `AuthorID`,
-    `BookID`
-),
- FOREIGN KEY (`AuthorID`) REFERENCES `Authors` (`AuthorID`),
- FOREIGN KEY (`BookID`) REFERENCES `Books` (`BookID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
--- ----------------------------
--- Records of continents
--- ----------------------------
-INSERT INTO `continents` VALUES ('AF', 'Africa');
-INSERT INTO `continents` VALUES ('AN', 'Antarctica');
-INSERT INTO `continents` VALUES ('AS', 'Asia');
-INSERT INTO `continents` VALUES ('EU', 'Europe');
-INSERT INTO `continents` VALUES ('NA', 'North America');
-INSERT INTO `continents` VALUES ('OC', 'Oceania');
-INSERT INTO `continents` VALUES ('SA', 'South America');
-INSERT INTO `continents` VALUES ('??', NULL);
-
-insert into `Books` (`BookTitle`)
-values ('Beginning T-SQL');
-insert into `Authors` (`AuthorName`)
-values ('Kathi Kellenberger');
-
-insert into `Authors` (`AuthorName`)
-values ('Scott Shaw');
-
-insert into `AuthorBook` (`AuthorID`, `BookID`)
-values (1, 1);
-
-insert into `AuthorBook` (`AuthorID`, `BookID`)
-values (2, 1);
-
