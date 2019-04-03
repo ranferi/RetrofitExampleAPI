@@ -403,7 +403,7 @@ class TstOperation
 
             // Comentarios
             $sixth = $this->endpoint->query("
-                SELECT ?comentario ?base
+                SELECT ?comentario ?prop ?base
                 WHERE {
                     " . $temp_1['sitio_src'] . " su:tieneComentario ?prop .
                     ?prop su:comentario ?comentario .
@@ -414,6 +414,10 @@ class TstOperation
             $comments = array();
             foreach ($sixth as $comment) {
                 $temp_3 = array();
+                $prop = $comment->prop->getUri();
+                $comm = substr($prop, strrpos($prop, "comm_"));
+                $id = intval(substr($comm, strrpos($comm, "_") + 1));
+                $temp_3['id'] = $id;
                 $temp_3['comentario'] = $comment->comentario->getValue();
                 $temp_3['proviene'] = $comment->base->localName();
                 array_push($comments, $temp_3);
@@ -582,7 +586,7 @@ class TstOperation
 
             // Comentarios
             $sixth = $this->endpoint->query("
-                SELECT ?comentario ?base
+                SELECT ?prop ?comentario ?base
                 WHERE {
                     " . $sujeto . " su:tieneComentario ?prop .
                     ?prop su:comentario ?comentario .
@@ -593,6 +597,10 @@ class TstOperation
             $comments = array();
             foreach ($sixth as $comment) {
                 $temp_3 = array();
+                $prop = $comment->prop->getUri();
+                $comm = substr($prop, strrpos($prop, "comm_"));
+                $id = intval(substr($comm, strrpos($comm, "_") + 1));
+                $temp_3['id'] = $id;
                 $temp_3['comentario'] = $comment->comentario->getValue();
                 $temp_3['proviene'] = $comment->base->localName();
                 array_push($comments, $temp_3);
@@ -601,11 +609,12 @@ class TstOperation
             $sixth->rewind();
 
             $seventh = $this->endpoint->query("
-                SELECT ?usuario ?comentario ?id ?correo 
+                SELECT ?usuario ?prop ?comentario ?id ?correo 
                 WHERE {
                     ?u su:sitioVisitado " . $sujeto . " .
                     ?user su:visito ?u .
-                    ?u su:dejaComentario/su:conComentario ?comentario .
+                    ?u su:dejaComentario ?prop .
+                    ?prop su:conComentario ?comentario .
                     ?user su:idUsuario ?id .
                     ?user su:email ?correo .
                     ?user su:usuario ?usuario .
@@ -616,6 +625,10 @@ class TstOperation
             foreach ($seventh as $comment) {
                 $temp_4 = array();
                 $temp_5 = array();
+                $prop = $comment->prop->getUri();
+                $comm = substr($prop, strrpos($prop, "comment_"));
+                $id = intval(substr($comm, strrpos($comm, "_") + 1));
+                $temp_4['id'] = $id;
                 $temp_4['comentario'] = $comment->comentario->getValue();
 
                 $temp_5['id'] = $comment->id->getValue();
