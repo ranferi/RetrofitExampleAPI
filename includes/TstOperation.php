@@ -269,22 +269,38 @@ class TstOperation
         $temp['visito'] = array();
 
         $visited = $this->endpoint->query("
-        SELECT ?sujeto ?sitio ?precio ?comentario ?gusto
+        SELECT ?sujeto ?a ?sitio ?precio ?comentario ?c ?gusto
         WHERE {
             ?sujeto su:idUsuario " . $temp['id'] . " .
             ?sujeto su:visito ?a . 
             ?a su:sitioVisitado ?sitio .
             ?a su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
-            ?a su:dejaComentario/su:conComentario ?comentario .
+            ?a su:dejaComentario ?c . 
+            ?c su:conComentario ?comentario .
             ?a su:leGusto ?gusto .
         }");
 
         $temp_1 = array();
         foreach ($visited as $place) {
+            $temp_c = array();
+            $temp_x = array();
+            $prop = $place->a->getUri();
+            $comm = substr($prop, strrpos($prop, "r_user_place_"));
+            $prop_ = $place->c->getUri();
+            $comm_id = substr($prop_, strrpos($prop_, "r_user_comment_"));
+            $id = intval(substr($comm, strripos($comm, "_") + 1));
+            $id_c = intval(substr($comm_id, strripos($comm_id, "_") + 1));
+            $temp_1['id'] = $id;
             $temp_1['sitio_src'] = $place->sitio->shorten();
             $temp_1['precio'] = $place->precio->shorten();
             $temp_1['gusto'] = $place->gusto->getValue();
-            $temp_1['comentario'] = $place->comentario->getValue();
+            $temp_c['comentario'] = $place->comentario->getValue();
+            $temp_c['id'] = $id_c;
+            $temp_x['id'] = $temp['id'];
+            $temp_x['usuario'] = $temp['usuario'];
+            $temp_x['email'] = $temp['email'];
+            $temp_c['user'] = $temp_x;
+            $temp_1['comentario'] = $temp_c;
             $temp_1['sitio'] = array();
 
             $string = "
@@ -392,7 +408,6 @@ class TstOperation
                     ?prop su:imagenSitio ?imagen .
                 }"
             );
-
             $images = array();
             foreach ($fifth as $img) {
                 $temp_3 = array();
@@ -426,11 +441,12 @@ class TstOperation
             $sixth->rewind();
 
             $seventh = $this->endpoint->query("
-                SELECT ?usuario ?comentario ?id ?usuario ?correo 
+                SELECT ?user ?comentario ?c ?id ?usuario ?correo 
                 WHERE {
                     ?u su:sitioVisitado " . $temp_1['sitio_src'] . " .
                     ?user su:visito ?u .
-                    ?u su:dejaComentario/su:conComentario ?comentario .
+                    ?u su:dejaComentario ?c .
+                    ?c su:conComentario ?comentario .
                     ?user su:idUsuario ?id .
                     ?user su:email ?correo .
                     ?user su:usuario ?usuario .
@@ -440,6 +456,12 @@ class TstOperation
             foreach ($seventh as $comment) {
                 $temp_4 = array();
                 $temp_5 = array();
+                $prop_ = $comment->c->getUri();
+                $comm_id1 = substr($prop_, strrpos($prop_, "r_user_comment_"));
+
+                $id_c1 = intval(substr($comm_id1, strripos($comm_id1, "_") + 1));
+                // echo '<pre>' . var_export($id_c1, true) . '</pre>';
+                $temp_4['id'] = $id_c1;
                 $temp_4['comentario'] = $comment->comentario->getValue();
 
                 $temp_5['id'] = $comment->id->getValue();
