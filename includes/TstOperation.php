@@ -285,7 +285,7 @@ class TstOperation
             $temp_c = array();
             $temp_x = array();
 
-            $id = getIdFromURI($place->a->getUri(), "r_user_place_");
+            $id = $this->getIdFromURI($place->a->getUri(), "r_user_place_");
             /*$prop = $place->a->getUri();
             $comm = substr($prop, strrpos($prop, "r_user_place_"));
             $id = intval(substr($comm, strripos($comm, "_") + 1));*/
