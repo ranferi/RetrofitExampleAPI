@@ -282,30 +282,28 @@ class TstOperation
 
         $temp_1 = array();
         foreach ($visited as $place) {
-            $temp_c = array();
-            $temp_x = array();
+            $temp_comentario = array();
+            $temp_usuario = array();
 
-            $id = $this->getIdFromURI($place->a->getUri(), "r_user_place_");
-            /*$prop = $place->a->getUri();
-            $comm = substr($prop, strrpos($prop, "r_user_place_"));
-            $id = intval(substr($comm, strripos($comm, "_") + 1));*/
-            
-            $prop_ = $place->c->getUri();
-            $comm_id = substr($prop_, strrpos($prop_, "r_user_comment_"));
-            $id_c = intval(substr($comm_id, strripos($comm_id, "_") + 1));
-            $temp_1['id'] = $id;
+            $id_visitado = $this->getIdFromURI($place->a->getUri(), "r_user_place_");
+            $id_comentario = $this->getIdFromURI($place->c->getUri(), "r_user_comment_");
+
+            $temp_usuario['id'] = $temp['id'];
+            $temp_usuario['usuario'] = $temp['usuario'];
+            $temp_usuario['email'] = $temp['email'];
+
+            $temp_comentario['comentario'] = $place->comentario->getValue();
+            $temp_comentario['id'] = $id_comentario;
+            $temp_comentario['user'] = $temp_usuario;
+
+            $temp_1['id'] = $id_visitado;
             $temp_1['sitio_src'] = $place->sitio->shorten();
             $temp_1['precio'] = $place->precio->shorten();
             $temp_1['gusto'] = $place->gusto->getValue();
-            $temp_c['comentario'] = $place->comentario->getValue();
-            $temp_c['id'] = $id_c;
-            $temp_x['id'] = $temp['id'];
-            $temp_x['usuario'] = $temp['usuario'];
-            $temp_x['email'] = $temp['email'];
-            $temp_c['user'] = $temp_x;
-            $temp_1['comentario'] = $temp_c;
+            $temp_1['comentario'] = $temp_comentario;
             $temp_1['sitio'] = array();
 
+            // Datos del sitio
             $string = "
                 SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
                 WHERE {
@@ -322,8 +320,9 @@ class TstOperation
                 }";
             $result = $this->endpoint->query($string);
 
-            $temp_2 = array();
             $temp_id = $result->current()->id->getValue();
+
+            $temp_2 = array();
             $temp_2['id'] = $temp_id;
             $temp_2['medi'] = $result->current()->medi->localName();
             if (isset($result->current()->latitud))
@@ -333,6 +332,7 @@ class TstOperation
             $temp_2['direccion'] = $result->current()->dir->getValue();
             $temp_2['musica'] = $result->current()->musica->getValue();
 
+            // Nombres
             $second = $this->endpoint->query("
                 SELECT ?nombreSitio ?base
                 WHERE {
@@ -350,6 +350,7 @@ class TstOperation
             }
             $temp_2['nombres'] = $names;
 
+            // Calificaciones
             $third = $this->endpoint->query("
                 SELECT ?calificacion ?base
                 WHERE {
@@ -431,10 +432,8 @@ class TstOperation
 
             $comments = array();
             foreach ($sixth as $comment) {
+                $id = $this->getIdFromURI($comment->prop->getUri(), "comm_");
                 $temp_3 = array();
-                $prop = $comment->prop->getUri();
-                $comm = substr($prop, strrpos($prop, "comm_"));
-                $id = intval(substr($comm, strrpos($comm, "_") + 1));
                 $temp_3['id'] = $id;
                 $temp_3['comentario'] = $comment->comentario->getValue();
                 $temp_3['proviene'] = $comment->base->localName();
