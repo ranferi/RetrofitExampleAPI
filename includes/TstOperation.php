@@ -60,7 +60,7 @@ class TstOperation
 
             if ($response->isSuccessful())
                 return USER_CREATED;
-            return USER_CREATION_FAILED;
+            return USER_CREATION_FAILED; 
         }
         return USER_EXIST;
     }
@@ -284,11 +284,14 @@ class TstOperation
         foreach ($visited as $place) {
             $temp_c = array();
             $temp_x = array();
-            $prop = $place->a->getUri();
+
+            $id = getIdFromURI($place->a->getUri(), "r_user_place_");
+            /*$prop = $place->a->getUri();
             $comm = substr($prop, strrpos($prop, "r_user_place_"));
+            $id = intval(substr($comm, strripos($comm, "_") + 1));*/
+            
             $prop_ = $place->c->getUri();
             $comm_id = substr($prop_, strrpos($prop_, "r_user_comment_"));
-            $id = intval(substr($comm, strripos($comm, "_") + 1));
             $id_c = intval(substr($comm_id, strripos($comm_id, "_") + 1));
             $temp_1['id'] = $id;
             $temp_1['sitio_src'] = $place->sitio->shorten();
@@ -779,6 +782,11 @@ class TstOperation
         }
         $result = $this->endpoint->query($query);
         return $result->numRows() > 0;
+    }
+
+    function getIdFromURI($URI, $substr) {
+        $sub_uri = substr($URI, strrpos($URI, "substr"));
+        return intval(substr($sub_uri, strripos($sub_uri, "_") + 1));
     }
 
     function typeBlankNode($temp) 
