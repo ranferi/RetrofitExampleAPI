@@ -785,7 +785,7 @@ class TstOperation
     }
 
     function getIdFromURI($URI, $substr) {
-        $sub_uri = substr($URI, strrpos($URI, "substr"));
+        $sub_uri = substr($URI, strrpos($URI, $substr));
         return intval(substr($sub_uri, strripos($sub_uri, "_") + 1));
     }
 
