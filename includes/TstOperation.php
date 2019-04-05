@@ -333,145 +333,23 @@ class TstOperation
             $temp_2['musica'] = $result->current()->musica->getValue();
 
             // Nombres
-            $second = $this->endpoint->query("
-                SELECT ?nombreSitio ?base
-                WHERE {
-                    " . $temp_1['sitio_src'] . " su:tienePropiedad ?prop .
-                    ?prop su:nombreSitio ?nombreSitio .
-                    ?prop su:provieneDeBD ?base .
-                }"
-            );
-            $names = array();
-            foreach ($second as $name) {
-                $temp_3 = array();
-                $temp_3['nombre_sitio'] = $name->nombreSitio->getValue();
-                $temp_3['proviene'] = $name->base->localName();
-                array_push($names, $temp_3);
-            }
-            $temp_2['nombres'] = $names;
+            $temp_2['nombres'] = $this->getNamesOfPlace($temp_1['sitio_src']);
 
             // Calificaciones
-            $third = $this->endpoint->query("
-                SELECT ?calificacion ?base
-                WHERE {
-                    " . $temp_1['sitio_src'] . " su:tienePropiedad ?prop .
-                    ?prop su:calificacion ?calificacion .
-                    ?prop su:provieneDeBD ?base .
-                }"
-            );
-            $ratings = array();
-            foreach ($third as $rating) {
-                $temp_3 = array();
-                $temp_3['calificacion'] = $rating->calificacion->getValue();
-                $temp_3['proviene'] = $rating->base->localName();
-                array_push($ratings, $temp_3);
-            }
-            $total = 0.0;
-            if ($ratings) {
-                foreach ($ratings as $rating) {
-                    if ($rating['proviene'] == "GooglePlaces")
-                        $total += $rating['calificacion'] * 2.0;
-                    else
-                        $total += $rating['calificacion'];
-                }
-                $total = $total / 2.0;
-            }
+            $ratings = $this->getRatingsOfPlace($temp_1['sitio_src']);
             $temp_2['calificaciones'] = $ratings;
-            $temp_2['total'] = $total;
+            $temp_2['total'] = $this->getRatingsTotal($ratings);
 
             // Categorias
-            $fourth = $this->endpoint->query("
-                SELECT ?categoria ?proviene
-                WHERE {
-                    " . $temp_1['sitio_src'] . " su:tienePropiedad ?prop .
-                    ?prop su:categoria ?prop1 .
-                    ?prop1 rdf:type ?categoria .
-                    ?categoria rdfs:subClassOf [ rdf:rest* [ owl:onProperty su:esParteDeBD ; owl:allValuesFrom ?proviene ] ]
-                    FILTER NOT EXISTS { 
-                        ?prop1 a ?otra .
-                        ?otra rdfs:subClassOf ?categoria .
-                        FILTER(?otra != ?categoria)
-                    }
-                }"
-            );
-
-            $cats = array();
-            foreach ($fourth as $cat) {
-                $temp_3 = array();
-                $temp_3['categoria'] = $cat->categoria->localName();
-                $temp_3['proviene'] = $cat->proviene->localName();
-                array_push($cats, $temp_3);
-            }
-            $temp_2['categorias'] = $cats;
+            $temp_2['categorias'] = $this->getCategoriesOfPlace($temp_1['sitio_src']);
 
             // Imagenes
-            $fifth = $this->endpoint->query("
-                SELECT ?imagen
-                WHERE {
-                    " . $temp_1['sitio_src'] . " su:tienePropiedad ?prop .
-                    ?prop su:imagenSitio ?imagen .
-                }"
-            );
-            $images = array();
-            foreach ($fifth as $img) {
-                $temp_3 = array();
-                $temp_3['imagen'] = $img->imagen->getValue();
-                array_push($images, $temp_3);
-            }
-            $temp_2['imagenes'] = $images;
+            $temp_2['imagenes'] = $this->getImagesOfPlace($temp_1['sitio_src']);
 
             // Comentarios
-            $sixth = $this->endpoint->query("
-                SELECT ?comentario ?prop ?base
-                WHERE {
-                    " . $temp_1['sitio_src'] . " su:tieneComentario ?prop .
-                    ?prop su:comentario ?comentario .
-                    ?prop su:provieneDeBD ?base .
-                }"
-            );
-
-            $comments = array();
-            foreach ($sixth as $comment) {
-                $id = $this->getIdFromURI($comment->prop->getUri(), "comm_");
-                $temp_3 = array();
-                $temp_3['id'] = $id;
-                $temp_3['comentario'] = $comment->comentario->getValue();
-                $temp_3['proviene'] = $comment->base->localName();
-                array_push($comments, $temp_3);
-            }
-
-            $sixth->rewind();
-
-            $seventh = $this->endpoint->query("
-                SELECT ?user ?comentario ?c ?id ?usuario ?correo 
-                WHERE {
-                    ?u su:sitioVisitado " . $temp_1['sitio_src'] . " .
-                    ?user su:visito ?u .
-                    ?u su:dejaComentario ?c .
-                    ?c su:conComentario ?comentario .
-                    ?user su:idUsuario ?id .
-                    ?user su:email ?correo .
-                    ?user su:usuario ?usuario .
-                    FILTER (?id != " . $temp['id'] . ")
-                }
-            ");
-            foreach ($seventh as $comment) {
-                $temp_4 = array();
-                $temp_5 = array();
-                $prop_ = $comment->c->getUri();
-                $comm_id1 = substr($prop_, strrpos($prop_, "r_user_comment_"));
-
-                $id_c1 = intval(substr($comm_id1, strripos($comm_id1, "_") + 1));
-                // echo '<pre>' . var_export($id_c1, true) . '</pre>';
-                $temp_4['id'] = $id_c1;
-                $temp_4['comentario'] = $comment->comentario->getValue();
-
-                $temp_5['id'] = $comment->id->getValue();
-                $temp_5['usuario'] = $comment->usuario->getValue();
-                $temp_5['email'] = $comment->correo->getValue();
-                $temp_4['user'] = $temp_5;
-                array_push($comments, $temp_4);
-            }
+            $temp_comments1 = $this->getCommentsOfPlace($temp_1['sitio_src']);
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($temp_1['sitio_src'], $temp['id']);
+            $comments = array_merge($temp_comments1, $temp_comments2);
 
             $temp_2['comentarios'] = $comments;
 
@@ -481,8 +359,6 @@ class TstOperation
         }
         array_push($users, $temp);
 
-
-        // echo '<pre>' . var_export($temp, true) . '</pre>';
         return $users;
     }
 
@@ -507,9 +383,10 @@ class TstOperation
 
         $points = array();
         foreach ($result as $place) {
-            $temp = array();
             $sujeto = $place->sujeto->shorten();
             $temp_id = $place->id->getValue();
+
+            $temp = array();
             $temp['id'] = $temp_id;
             $temp['medi'] = $place->medi->localName();
             if (isset($place->latitud))
@@ -519,148 +396,25 @@ class TstOperation
             $temp['direccion'] = $place->dir->getValue();
             $temp['musica'] = $place->musica->getValue();
 
-            $second = $this->endpoint->query("
-                SELECT ?nombreSitio ?base
-                WHERE {
-                    " . $sujeto . " su:tienePropiedad ?prop .
-                    ?prop su:nombreSitio ?nombreSitio .
-                    ?prop su:provieneDeBD ?base .
-                }"
-            );
+            // Nombres
 
-            $names = array();
-            foreach ($second as $name) {
-                $temp_2 = array();
-                $temp_2['nombre_sitio'] = $name->nombreSitio->getValue();
-                $temp_2['proviene'] = $name->base->localName();
-                array_push($names, $temp_2);
-            }
-            $temp['nombres'] = $names;
+            $temp['nombres'] = $this->getNamesOfPlace($sujeto);
 
-            $third = $this->endpoint->query("
-                SELECT ?calificacion ?base
-                WHERE {
-                    " . $sujeto . " su:tienePropiedad ?prop .
-                    ?prop su:calificacion ?calificacion .
-                    ?prop su:provieneDeBD ?base .
-                }"
-            );
-
-            $ratings = array();
-            foreach ($third as $rating) {
-                $temp_3 = array();
-                $temp_3['calificacion'] = $rating->calificacion->getValue();
-                $temp_3['proviene'] = $rating->base->localName();
-                array_push($ratings, $temp_3);
-            }
-            $total = 0.0;
-            if ($ratings) {
-                foreach ($ratings as $rating) {
-                    if ($rating['proviene'] == "GooglePlaces")
-                        $total += $rating['calificacion'] * 2.0;
-                    else
-                        $total += $rating['calificacion'];
-                }
-                $total = $total / 2.0;
-            }
+            // Calificaciones
+            $ratings = $this->getRatingsOfPlace($sujeto);
             $temp['calificaciones'] = $ratings;
-            $temp['total'] = $total;
+            $temp['total'] = $this->getRatingsTotal($ratings);
 
             // Categorias
-            $fourth = $this->endpoint->query("
-                SELECT ?categoria ?proviene
-                WHERE {
-                    " . $sujeto . " su:tienePropiedad ?prop .
-                    ?prop su:categoria ?prop1 .
-                    ?prop1 rdf:type ?categoria .
-                    ?categoria rdfs:subClassOf [ rdf:rest* [ owl:onProperty su:esParteDeBD ; owl:allValuesFrom ?proviene ] ]
-                    FILTER NOT EXISTS { 
-                        ?prop1 a ?otra .
-                        ?otra rdfs:subClassOf ?categoria .
-                        FILTER(?otra != ?categoria)
-                    }
-                }"
-            );
-
-            $cats = array();
-            foreach ($fourth as $cat) {
-                $temp_3 = array();
-                $temp_3['categoria'] = $cat->categoria->localName();
-                $temp_3['proviene'] = $cat->proviene->localName();
-                array_push($cats, $temp_3);
-            }
-            $temp['categorias'] = $cats;
+            $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
 
             // Imagenes
-            $fifth = $this->endpoint->query("
-                SELECT ?imagen
-                WHERE {
-                    " . $sujeto . " su:tienePropiedad ?prop .
-                    ?prop su:imagenSitio ?imagen .
-                }"
-            );
-
-            $images = array();
-            foreach ($fifth as $img) {
-                $temp_3 = array();
-                $temp_3['imagen'] = $img->imagen->getValue();
-                array_push($images, $temp_3);
-            }
-            $temp['imagenes'] = $images;
+            $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
 
             // Comentarios
-            $sixth = $this->endpoint->query("
-                SELECT ?prop ?comentario ?base
-                WHERE {
-                    " . $sujeto . " su:tieneComentario ?prop .
-                    ?prop su:comentario ?comentario .
-                    ?prop su:provieneDeBD ?base .
-                }"
-            );
-
-            $comments = array();
-            foreach ($sixth as $comment) {
-                $temp_3 = array();
-                $prop = $comment->prop->getUri();
-                $comm = substr($prop, strrpos($prop, "comm_"));
-                $id = intval(substr($comm, strrpos($comm, "_") + 1));
-                $temp_3['id'] = $id;
-                $temp_3['comentario'] = $comment->comentario->getValue();
-                $temp_3['proviene'] = $comment->base->localName();
-                array_push($comments, $temp_3);
-            }
-
-            $sixth->rewind();
-
-            $seventh = $this->endpoint->query("
-                SELECT ?usuario ?prop ?comentario ?id ?correo 
-                WHERE {
-                    ?u su:sitioVisitado " . $sujeto . " .
-                    ?user su:visito ?u .
-                    ?u su:dejaComentario ?prop .
-                    ?prop su:conComentario ?comentario .
-                    ?user su:idUsuario ?id .
-                    ?user su:email ?correo .
-                    ?user su:usuario ?usuario .
-                }
-            ");
-
-            // echo '<pre>' . var_export($seventh, true) . '</pre>';
-            foreach ($seventh as $comment) {
-                $temp_4 = array();
-                $temp_5 = array();
-                $prop = $comment->prop->getUri();
-                $comm = substr($prop, strrpos($prop, "comment_"));
-                $id = intval(substr($comm, strrpos($comm, "_") + 1));
-                $temp_4['id'] = $id;
-                $temp_4['comentario'] = $comment->comentario->getValue();
-
-                $temp_5['id'] = $comment->id->getValue();
-                $temp_5['usuario'] = $comment->usuario->getValue();
-                $temp_5['email'] = $comment->correo->getValue();
-                $temp_4['user'] = $temp_5;
-                array_push($comments, $temp_4);
-            }
+            $temp_comments1 = $this->getCommentsOfPlace($sujeto );
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
+            $comments = array_merge($temp_comments1, $temp_comments2);
 
             $temp['comentarios'] = $comments;
 
@@ -807,6 +561,169 @@ class TstOperation
                         $r["error"] = true;
                         return $r;
                 }
+    }
+
+    function getNamesOfPlace($place_src)
+    {
+        $names = array();
+        $result = $this->endpoint->query("
+                SELECT ?nombreSitio ?base
+                WHERE {
+                    " . $place_src . " su:tienePropiedad ?prop .
+                    ?prop su:nombreSitio ?nombreSitio .
+                    ?prop su:provieneDeBD ?base .
+                }"
+        );
+        foreach ($result as $name) {
+            $temp_2 = array();
+            $temp_2['nombre_sitio'] = $name->nombreSitio->getValue();
+            $temp_2['proviene'] = $name->base->localName();
+            array_push($names, $temp_2);
+        }
+        return $names;
+    }
+
+    function getImagesOfPlace($place_src)
+    {
+        $images = array();
+        $result = $this->endpoint->query("
+                SELECT ?imagen
+                WHERE {
+                    " . $place_src. " su:tienePropiedad ?prop .
+                    ?prop su:imagenSitio ?imagen .
+                }"
+        );
+
+        foreach ($result as $img) {
+            $temp_3 = array();
+            $temp_3['imagen'] = $img->imagen->getValue();
+            array_push($images, $temp_3);
+        }
+        return $images;
+    }
+
+    function getCategoriesOfPlace($place_src)
+    {
+        $cats = array();
+        $result = $this->endpoint->query("
+                SELECT ?categoria ?proviene
+                WHERE {
+                    " . $place_src . " su:tienePropiedad ?prop .
+                    ?prop su:categoria ?prop1 .
+                    ?prop1 rdf:type ?categoria .
+                    ?categoria rdfs:subClassOf [ rdf:rest* [ owl:onProperty su:esParteDeBD ; owl:allValuesFrom ?proviene ] ]
+                    FILTER NOT EXISTS { 
+                        ?prop1 a ?otra .
+                        ?otra rdfs:subClassOf ?categoria .
+                        FILTER(?otra != ?categoria)
+                    }
+                }"
+        );
+        foreach ($result as $cat) {
+            $temp_3 = array();
+            $temp_3['categoria'] = $cat->categoria->localName();
+            $temp_3['proviene'] = $cat->proviene->localName();
+            array_push($cats, $temp_3);
+        }
+        return $cats;
+    }
+
+    function getRatingsOfPlace($place_src)
+    {
+        $ratings = array();
+        $result = $this->endpoint->query("
+                SELECT ?calificacion ?base
+                WHERE {
+                    " . $place_src . " su:tienePropiedad ?prop .
+                    ?prop su:calificacion ?calificacion .
+                    ?prop su:provieneDeBD ?base .
+                }"
+        );
+        foreach ($result as $rating) {
+            $temp_3 = array();
+            $temp_3['calificacion'] = $rating->calificacion->getValue();
+            $temp_3['proviene'] = $rating->base->localName();
+            array_push($ratings, $temp_3);
+        }
+
+        return $ratings;
+    }
+
+    function getRatingsTotal($ratings)
+    {
+        $total = 0.0;
+        if ($ratings) {
+            foreach ($ratings as $rating) {
+                if ($rating['proviene'] == "GooglePlaces")
+                    $total += $rating['calificacion'] * 2.0;
+                else
+                    $total += $rating['calificacion'];
+            }
+            $total = $total / 2.0;
+        }
+        return $total;
+    }
+
+    function getCommentsOfPlace($place_src)
+    {
+        $comments = array();
+        $result = $this->endpoint->query("
+                SELECT ?comentario ?prop ?base
+                WHERE {
+                    " . $place_src. " su:tieneComentario ?prop .
+                    ?prop su:comentario ?comentario .
+                    ?prop su:provieneDeBD ?base .
+                }"
+        );
+        foreach ($result as $comment) {
+            $id = $this->getIdFromURI($comment->prop->getUri(), "comm_");
+            $temp_3 = array();
+            $temp_3['id'] = $id;
+            $temp_3['comentario'] = $comment->comentario->getValue();
+            $temp_3['proviene'] = $comment->base->localName();
+            array_push($comments, $temp_3);
+        }
+
+        return $comments;
+
+    }
+
+    function getCommentOfPlaceFromUser($place_src, $id_user = null)
+    {
+        $comments = array();
+        $query = "
+            SELECT ?id ?usuario ?correo ?blank_c ?comentario 
+            WHERE {
+                ?u su:sitioVisitado " . $place_src . " .
+                ?user su:visito ?u .
+                ?u su:dejaComentario ?blank_c .
+                ?blank_c su:conComentario ?comentario .
+                ?user su:idUsuario ?id .
+                ?user su:email ?correo .
+                ?user su:usuario ?usuario ";
+        if ($id_user != null) {
+            $query .= ".\nFILTER (?id != " . $id_user . ") } ";
+        } else {
+            $query .= ".\n } ";
+        }
+        $result = $this->endpoint->query($query);
+        foreach ($result as $comment) {
+            $id = $this->getIdFromURI($comment->blank_c->getUri(), "r_user_comment_");
+            $temp_4 = array();
+            $temp_5 = array();
+
+            $temp_4['id'] = $id;
+            $temp_4['comentario'] = $comment->comentario->getValue();
+
+            $temp_5['id'] = $comment->id->getValue();
+            $temp_5['usuario'] = $comment->usuario->getValue();
+            $temp_5['email'] = $comment->correo->getValue();
+
+            $temp_4['user'] = $temp_5;
+            array_push($comments, $temp_4);
+        }
+
+        return $comments;
     }
 
     function stringWhereQuery($id, $idPlace) 
