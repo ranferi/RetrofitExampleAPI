@@ -632,7 +632,7 @@ class TstOperation
     {
         $ratings = array();
         $result = $this->endpoint->query("
-                SELECT ?calificacion ?base
+                SELECT ?calificacion ?prop ?base
                 WHERE {
                     " . $place_src . " su:tienePropiedad ?prop .
                     ?prop su:calificacion ?calificacion .
@@ -641,11 +641,17 @@ class TstOperation
         );
         foreach ($result as $rating) {
             $temp_3 = array();
+            $temp_3['id'] = $this->getIdFromURI($rating->prop->getUri(), "prop_");
             $temp_3['calificacion'] = $rating->calificacion->getValue();
             $temp_3['proviene'] = $rating->base->localName();
             array_push($ratings, $temp_3);
         }
 
+       $as = "OPTIONAL { 
+        ?usuario su:visito ?v .
+        ?v su:sitioVisitado ?sujeto .
+        ?usuario su:idUsuario 768178 .
+    }";
         return $ratings;
     }
 
