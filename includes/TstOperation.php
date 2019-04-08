@@ -524,13 +524,13 @@ class TstOperation
                 $query = "SELECT * WHERE { ?s su:idUsuario " . strval($id) . " . }";
                 break;
             case "user_place":
-                $query = "SELECT * WHERE { ?s su:visito su:r_user_place_" . strval($id) . " . }";
+                $query = "SELECT * WHERE { ?s su:visito _:r_user_place_" . strval($id) . " . }";
                 break;
             case "rating":
-                $query = "SELECT * WHERE { ?s su:daCalificacionPrecio su:r_user_rating_" . strval($id) . " . }";
+                $query = "SELECT * WHERE { ?s su:daCalificacionPrecio _:r_user_rating_" . strval($id) . " . }";
                 break;
             case "comment":
-                $query = "SELECT * WHERE { ?s su:dejaComentario su:r_user_comment_" . strval($id) . " . }";
+                $query = "SELECT * WHERE { ?s su:dejaComentario _:r_user_comment_" . strval($id) . " . }";
                 break;
         }
         $result = $this->endpoint->query($query);
