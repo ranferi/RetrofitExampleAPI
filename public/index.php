@@ -365,15 +365,15 @@ $app->get('/visited/{id}', function (Request $request, Response $response) {
     }
 });*/
 
-$app->post('/query/{id}', function (Request $request, Response $response) {
-    $params["error"] = false;
+$app->post('/opinion/{id}', function (Request $request, Response $response) {
+    $params = isTheseParametersAvailable(array('id_sitio', 'gusto', 'precio', 'comentario'));
     if (!$params["error"]) {
         $id = $request->getAttribute('id');
         $request_data = $request->getParsedBody();
         $id_place = $request_data['id_sitio'];
         $liked = $request_data['gusto'];
         $price = $request_data['precio'];
-        $comment = $request_data['commentario'];
+        $comment = $request_data['comentario'];
 
         $tst = new TstOperation();
         $response_data = array();
@@ -381,14 +381,16 @@ $app->post('/query/{id}', function (Request $request, Response $response) {
         if ($tst->insertUserRatingSite($id, $id_place, $liked, $price, $comment)) {
             $response_data['error'] = false;
             $response_data['message'] = 'Se envió tu opinión. ¡Gracias!';
-            echo '<pre>' . var_export($response_data, true) . '</pre>';
+            // echo '<pre>' . var_export($response_data, true) . '</pre>';
         } else {
             $response_data['error'] = true;
             $response_data['message'] = 'Hubo un error, intenta de nuevo.';
-            echo '<pre>' . var_export($response_data, true) . '</pre>';
+            // echo '<pre>' . var_export($response_data, true) . '</pre>';
         }
+        return $response->withJson($response_data);
+    } else {
+        return $response->withJson($params);
     }
-    return null;
 });
 
 /**

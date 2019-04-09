@@ -426,6 +426,9 @@ class TstOperation
     function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) 
     {
         $recursos = $this->checkIfSiteVisited($id, $idPlace);
+        $id_r1 = $this->createID(200000, 300000, "user_place");
+        $id_r2 = $this->createID(300000, 400000, "rating");
+        $id_r3 = $this->createID(400000, 500000, "comment");
         if (!empty($recursos)) {
             // existe el vinculo de un usuario con un sitio visitado
             $query = "SELECT DISTINCT ?o 
@@ -442,37 +445,37 @@ class TstOperation
             $delete_query = "DELETE { ?u su:visito ?r . ?r ?p ?o . ?o ?p1 ?o1 . }";
             $delete_query .= "WHERE {". $this->stringWhereQuery($id, $idPlace) . " }";
             $response = $this->endpoint->update($delete_query);
-            echo '<pre>' . var_export($response->isSuccessful(), true) . '</pre>';
+            // echo '<pre>' . var_export($response->isSuccessful(), true) . '</pre>';
             if (!$response->isSuccessful()) {
                 return false;
             }
         } else {
             // no existe un sitio visitado
             $recursos["usuario"]  = "su:user_" . strval($id);
-
-            $id_r1 = $this->createID(200000, 300000, "user_place");
-            $id_r2 = $this->createID(300000, 400000, "rating");
-            $id_r3 = $this->createID(400000, 500000, "comment");
-
             $recursos["sitio"] = "su:place_" . strval($idPlace);
             $recursos["usuario_sitio"] = "_:r_user_place_" . strval($id_r1);
             $recursos["usuario_calif"] = "_:r_user_rating_" . strval($id_r2);
             $recursos["usuario_comen"] = "_:r_user_comment_" . strval($id_r3);
-            echo '<pre>' . var_export($recursos, true) . '</pre>';
+            // echo '<pre>' . var_export($recursos, true) . '</pre>';
         }
         
         $insert_query = "INSERT DATA {\n" .
             $recursos["usuario"] . " su:visito " . $recursos["usuario_sitio"] . " .\n" .
             $recursos["usuario_sitio"] . " a su:RelacionUsuarioSitio .\n" .
+            $recursos["usuario_sitio"] . " su:idUsuarioSitio " . $id_r1 . " .\n" .
             $recursos["usuario_sitio"] . " su:sitioVisitado " . $recursos["sitio"] . " .\n" .
             $recursos["usuario_sitio"] . " su:daCalificacionPrecio " . $recursos["usuario_calif"] . " .\n" .
             $recursos["usuario_sitio"] . " su:dejaComentario " . $recursos["usuario_comen"] . " .\n" .
             $recursos["usuario_sitio"] . " su:leGusto \"" . $liked . "\"^^xsd:boolean .\n" .
+
             $recursos["usuario_calif"] . " a su:RelacionUsuarioCalificacionPrecio .\n" .
+            $recursos["usuario_calif"] . " su:idUsuarioCalif " . $id_r2 . " .\n" .
             $recursos["usuario_calif"] . " su:calificacionDeUsuarioPrecio su:" . $price . " .\n" .
+
             $recursos["usuario_comen"] . " a su:RelacionUsuarioComentario .\n" .
+            $recursos["usuario_comen"] . " su:idUsuarioComen " . $id_r3 . " .\n" .
             $recursos["usuario_comen"] . " su:conComentario \"" . $comment . "\" .\n" . "}";
-        echo '<pre>' . var_export($insert_query, true) . '</pre>';
+        // echo '<pre>' . var_export($insert_query, true) . '</pre>';
 
         return $this->endpoint->update($insert_query);
     }
@@ -524,6 +527,15 @@ class TstOperation
                 $query = "SELECT * WHERE { ?s su:idUsuario " . strval($id) . " . }";
                 break;
             case "user_place":
+                $query = "SELECT * WHERE { ?s su:idUsuarioSitio " . strval($id) . " . }";
+                break;
+            case "rating":
+                $query = "SELECT * WHERE { ?s su:idUsuarioCalif " . strval($id) . " . }";
+                break;
+            case "comment":
+                $query = "SELECT * WHERE { ?s su:idUsuarioComen " . strval($id) . " . }";
+                break;
+            /*case "user_place":
                 $query = "SELECT * WHERE { ?s su:visito _:r_user_place_" . strval($id) . " . }";
                 break;
             case "rating":
@@ -531,7 +543,7 @@ class TstOperation
                 break;
             case "comment":
                 $query = "SELECT * WHERE { ?s su:dejaComentario _:r_user_comment_" . strval($id) . " . }";
-                break;
+                break;*/
         }
         $result = $this->endpoint->query($query);
         return $result->numRows() > 0;
