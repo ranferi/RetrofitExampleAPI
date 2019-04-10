@@ -312,6 +312,33 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
 });
 
 
+$app->get('/search', function (Request $request, Response $response) {
+    $params = isTheseParametersAvailable(array('tipo', 'precio', 'distancia'));
+    if (!$params["error"]) {
+        $request_data = $request->getParsedBody();
+        $tipo = $request_data['tipo'];
+        $precio = $request_data['precio'];
+        $distancia = $request_data['distancia'];
+        $musica = $request_data['musica'] ?: '';
+
+        $tst = new TstOperation();
+        $response_data = array();
+
+        if ($tst->searchPlace($id, $usuario, $email, $password, $nombre, $apellido_paterno, $apellido_materno)) {
+            $response_data['error'] = false;
+            $response_data['message'] = 'Actualización exitosa';
+            $response_data['user'] = $tst->getUserByEmail($email);
+        } else {
+            $response_data['error'] = true;
+            $response_data['message'] = 'No se actualizó';
+        }
+
+        return $response->withJson($response_data);
+    } else {
+        return $response->withJson($params);
+    }
+});
+
 /**
  * Se actualiza la información de un usuario
  */

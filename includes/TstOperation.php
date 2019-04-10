@@ -20,10 +20,10 @@ class TstOperation
              $this->client = new EasyRdf_Http_Client(null, $config)
          );
 
-        $this->gs = new  EasyRdf_GraphStore('http://localhost:3030/repositories/prueba3/rdf-graphs/service');
+        $this->gs = new  EasyRdf_GraphStore('http://localhost:3030/repositories/ssrsi/rdf-graphs/service');
 
-        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/prueba3",
-            "http://localhost:3030/repositories/prueba3/statements");
+        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/ssrsi",
+            "http://localhost:3030/repositories/ssrsi/statements");
     }
 
     /***
@@ -303,34 +303,94 @@ class TstOperation
             $temp_1['comentario'] = $temp_comentario;
             $temp_1['sitio'] = array();
 
-            // Datos del sitio
-            $string = "
-                SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
-                WHERE {
-                    " . $temp_1['sitio_src'] . " su:idSitio ?id .
-                    " . $temp_1['sitio_src'] . " a [
-                        a owl:Restriction;
-                        owl:onProperty su:tieneUnValorMEDI;
-                        owl:someValuesFrom ?medi
-                    ] .
-                    " . $temp_1['sitio_src'] . " su:tienePropiedad/su:direccionSitio ?dir .
-                    " . $temp_1['sitio_src'] . " su:tienePropiedad/su:musica ?musica .
-                    OPTIONAL { " . $temp_1['sitio_src'] . " su:tienePropiedad/su:latitud ?latitud . }
-                    OPTIONAL { " . $temp_1['sitio_src'] . " su:tienePropiedad/su:longitud ?longitud . }
-                }";
-            $result = $this->endpoint->query($string);
+            // Propiedades
+            $temp_2 = $this->getBasePropsPlace($temp_1['sitio_src']);
 
-            $temp_id = $result->current()->id->getValue();
+            // Nombres
+            $temp_2['nombres'] = $this->getNamesOfPlace($temp_1['sitio_src']);
 
-            $temp_2 = array();
-            $temp_2['id'] = $temp_id;
-            $temp_2['medi'] = $result->current()->medi->localName();
-            if (isset($result->current()->latitud))
-                $temp_2['latitud'] = $result->current()->latitud->getValue();
-            if (isset($result->current()->longitud))
-                $temp_2['longitud'] = $result->current()->longitud->getValue();
-            $temp_2['direccion'] = $result->current()->dir->getValue();
-            $temp_2['musica'] = $result->current()->musica->getValue();
+            // Calificaciones
+            $ratings = $this->getRatingsOfPlace($temp_1['sitio_src']);
+            $temp_2['calificaciones'] = $ratings;
+            $temp_2['total'] = $this->getRatingsTotal($ratings);
+
+            // Categorias
+            $temp_2['categorias'] = $this->getCategoriesOfPlace($temp_1['sitio_src']);
+
+            // Imagenes
+            $temp_2['imagenes'] = $this->getImagesOfPlace($temp_1['sitio_src']);
+
+            // Comentarios
+            $temp_comments1 = $this->getCommentsOfPlace($temp_1['sitio_src']);
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($temp_1['sitio_src'], $temp['id']);
+            $comments = array_merge($temp_comments1, $temp_comments2);
+
+            $temp_2['comentarios'] = $comments;
+
+            array_push($temp_1['sitio'], $temp_2);
+            array_push($temp['visito'], $temp_1);
+
+        }
+        array_push($users, $temp);
+
+        return $users;
+    }
+
+    function searchPlaces($id, $type, $price, $distance, $music)
+    {
+        $user = $this->endpoint->query("
+        SELECT ?sujeto ?nombre ?usuario  ?email
+        WHERE {
+            ?sujeto su:idUsuario " . $id . " .
+            ?sujeto su:nombre ?nombre .
+            ?sujeto su:usuario ?usuario .
+            ?sujeto su:email ?email .
+        }");
+        $users = array();
+        $temp = array();
+        $temp['id'] = intval($id);
+        $temp['nombre'] = $user->current()->nombre->getValue();
+        $temp['usuario'] = $user->current()->usuario->getValue();
+        $temp['email'] = $user->current()->email->getValue();
+        $temp['visito'] = array();
+
+        $visited = $this->endpoint->query("
+        SELECT ?sujeto ?a ?sitio ?precio ?comentario ?c ?gusto
+        WHERE {
+            ?sujeto su:idUsuario " . $temp['id'] . " .
+            ?sujeto su:visito ?a . 
+            ?a su:sitioVisitado ?sitio .
+            ?a su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
+            ?a su:dejaComentario ?c . 
+            ?c su:conComentario ?comentario .
+            ?a su:leGusto ?gusto .
+        }");
+
+        $temp_1 = array();
+        foreach ($visited as $place) {
+            $temp_comentario = array();
+            $temp_usuario = array();
+
+            $id_visitado = $this->getIdFromURI($place->a->getUri(), "r_user_place_");
+            $id_comentario = $this->getIdFromURI($place->c->getUri(), "r_user_comment_");
+
+            $temp_usuario['id'] = $temp['id'];
+            $temp_usuario['usuario'] = $temp['usuario'];
+            $temp_usuario['email'] = $temp['email'];
+
+            $temp_comentario['comentario'] = $place->comentario->getValue();
+            $temp_comentario['id'] = $id_comentario;
+            $temp_comentario['user'] = $temp_usuario;
+
+            $temp_1['id'] = $id_visitado;
+            $temp_1['sitio_src'] = $place->sitio->shorten();
+            $temp_1['precio'] = $place->precio->shorten();
+            $temp_1['gusto'] = $place->gusto->getValue();
+            $temp_1['comentario'] = $temp_comentario;
+            $temp_1['sitio'] = array();
+
+            // Propiedades
+            $temp_2 = $this->getBasePropsPlace($temp_1['sitio_src']);
 
             // Nombres
             $temp_2['nombres'] = $this->getNamesOfPlace($temp_1['sitio_src']);
@@ -365,7 +425,7 @@ class TstOperation
     function getAllPoints()
     {
         $result = $this->endpoint->query("
-        SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
+        SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica ?idUsuarioSitio ?calif ?comm ?idComm ?gusto 
         WHERE {
             ?sujeto su:idSitio ?id .
             ?sujeto a [
@@ -377,6 +437,17 @@ class TstOperation
             ?sujeto su:tienePropiedad/su:musica ?musica .
             OPTIONAL { ?sujeto su:tienePropiedad/su:latitud ?latitud . }
             OPTIONAL { ?sujeto su:tienePropiedad/su:longitud ?longitud . }
+            OPTIONAL {
+                ?user su:idUsuario 768177 .
+                ?user su:visito ?v .
+                ?v su:sitioVisitado ?sujeto .
+                ?v su:idUsuarioSitio ?idUsuarioSitio .
+                ?v su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?calif .
+                ?v su:dejaComentario ?c . 
+                ?c su:conComentario ?comm .
+                ?c su:idUsuarioComen ?idComm .
+                ?v su:leGusto ?gusto .
+            }
         }
         LIMIT 5"
         );
@@ -396,8 +467,47 @@ class TstOperation
             $temp['direccion'] = $place->dir->getValue();
             $temp['musica'] = $place->musica->getValue();
 
-            // Nombres
+            // Visito el sitio
+            $visito = array();
+            if (isset($place->idUsuarioSitio))
+                $visito['id'] = $place->idUsuarioSitio->getValue();
+            if (isset($place->gusto))
+                $visito['gusto'] = $place->gusto->getValue();
+            if (isset($place->calif))
+                $visito['precio'] = $place->calif->shorten();
+            $temp['visito'] = $visito;
+            $comentario = array();
+            if (isset($place->idComm))
+                $comentario['id'] = intval($place->idComm->getValue());
+            if (isset($place->comm))
+                $comentario['comentario'] = $place->comm->getValue();
+            $visito['comentario'] = $comentario;
+            /*
+             *
+            PREFIX su: <http://www.semanticweb.org/ranferi/ontologies/2018/9/ssrsi_onto#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+INSERT DATA {
+    su:user_768177 su:visito _:r_user_place_5 .
+    _:r_user_place_5 a su:RelacionUsuarioSitio .
+    _:r_user_place_5 su:idUsuarioSitio 200001 .
+    _:r_user_place_5 su:sitioVisitado su:place_14005 .
+    _:r_user_place_5 su:daCalificacionPrecio _:r_user_rating_5 .
+    _:r_user_place_5 su:dejaComentario _:r_user_comment_5 .
+    _:r_user_place_5 su:leGusto "true"^^xsd:boolean .
 
+    _:r_user_rating_5 a su:RelacionUsuarioCalificacionPrecio .
+    _:r_user_rating_5 su:idUsuarioCalif 300001 .
+    _:r_user_rating_5 su:calificacionDeUsuarioPrecio su:Barato .
+
+    _:r_user_comment_5 a su:RelacionUsuarioComentario .
+    _:r_user_comment_5 su:idUsuarioComen 400001 .
+    _:r_user_comment_5 su:conComentario "Esta bienasdsadas" .
+}
+            */
+
+
+            // Nombres
             $temp['nombres'] = $this->getNamesOfPlace($sujeto);
 
             // Calificaciones
@@ -415,7 +525,6 @@ class TstOperation
             $temp_comments1 = $this->getCommentsOfPlace($sujeto );
             $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
             $comments = array_merge($temp_comments1, $temp_comments2);
-
             $temp['comentarios'] = $comments;
 
             array_push($points, $temp);
@@ -573,6 +682,54 @@ class TstOperation
                         $r["error"] = true;
                         return $r;
                 }
+    }
+
+
+    function getBasePropsPlace($place_src)
+    {
+        /*$names = array();
+        $result = $this->endpoint->query("
+                SELECT ?nombreSitio ?base
+                WHERE {
+                    " . $place_src . " su:tienePropiedad ?prop .
+                    ?prop su:nombreSitio ?nombreSitio .
+                    ?prop su:provieneDeBD ?base .
+                }"
+        );
+        foreach ($result as $name) {
+            $temp_2 = array();
+            $temp_2['nombre_sitio'] = $name->nombreSitio->getValue();
+            $temp_2['proviene'] = $name->base->localName();
+            array_push($names, $temp_2);
+        }*/
+
+
+        $string = "
+                SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
+                WHERE {
+                    " . $place_src . " su:idSitio ?id .
+                    " . $place_src . " a [
+                        a owl:Restriction;
+                        owl:onProperty su:tieneUnValorMEDI;
+                        owl:someValuesFrom ?medi
+                    ] .
+                    " . $place_src . " su:tienePropiedad/su:direccionSitio ?dir .
+                    " . $place_src . " su:tienePropiedad/su:musica ?musica .
+                    OPTIONAL { " . $place_src . " su:tienePropiedad/su:latitud ?latitud . }
+                    OPTIONAL { " . $place_src . " su:tienePropiedad/su:longitud ?longitud . }
+                }";
+        $result = $this->endpoint->query($string);
+
+        $props = array();
+        $props['id'] = $result->current()->id->getValue();
+        $props['medi'] = $result->current()->medi->localName();
+        if (isset($result->current()->latitud))
+            $props['latitud'] = $result->current()->latitud->getValue();
+        if (isset($result->current()->longitud))
+            $props['longitud'] = $result->current()->longitud->getValue();
+        $props['direccion'] = $result->current()->dir->getValue();
+        $props['musica'] = $result->current()->musica->getValue();
+        return $props;
     }
 
     function getNamesOfPlace($place_src)
