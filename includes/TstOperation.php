@@ -469,13 +469,19 @@ class TstOperation
 
             // Visito el sitio
             $visito = array();
+
             if (isset($place->idUsuarioSitio))
                 $visito['id'] = $place->idUsuarioSitio->getValue();
             if (isset($place->gusto))
                 $visito['gusto'] = $place->gusto->getValue();
             if (isset($place->calif))
                 $visito['precio'] = $place->calif->shorten();
-            $temp['visito'] = $visito;
+            $visitantes = array();
+            $visitantes['id'] = 768177;
+            $visitantes['usuario'] = "incubo";
+            $visitantes['email'] = "usuario@gmail.com";
+            // $visito['visitantes'] = $visitantes;
+            $temp['visitaron'] = $visito;
             $comentario = array();
             if (isset($place->idComm))
                 $comentario['id'] = intval($place->idComm->getValue());
@@ -875,12 +881,12 @@ INSERT DATA {
                 ?blank_c su:conComentario ?comentario .
                 ?user su:idUsuario ?id .
                 ?user su:email ?correo .
-                ?user su:usuario ?usuario ";
-        if ($id_user != null) {
+                ?user su:usuario ?usuario . }";
+        /*if ($id_user != null) {
             $query .= ".\nFILTER (?id != " . $id_user . ") } ";
         } else {
             $query .= ".\n } ";
-        }
+        }*/
         $result = $this->endpoint->query($query);
         foreach ($result as $comment) {
             $id = $this->getIdFromURI($comment->blank_c->getUri(), "r_user_comment_");

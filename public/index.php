@@ -98,12 +98,6 @@ $app->post('/register', function (Request $request, Response $response) {
 
 });
 
-$app->get('/pass', function (Request $request, Response $response) {
-
-$str = "incubo";
-echo md5($str);
-});
-
 /***
  * Ruta para 'logear' al usuario
  */
@@ -313,9 +307,10 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
 
 
 $app->get('/search', function (Request $request, Response $response) {
-    $params = isTheseParametersAvailable(array('tipo', 'precio', 'distancia'));
+    $params = isTheseParametersAvailable(array('id', 'tipo', 'precio', 'distancia'));
     if (!$params["error"]) {
         $request_data = $request->getParsedBody();
+        $id = $request_data['id'];
         $tipo = $request_data['tipo'];
         $precio = $request_data['precio'];
         $distancia = $request_data['distancia'];
@@ -324,10 +319,10 @@ $app->get('/search', function (Request $request, Response $response) {
         $tst = new TstOperation();
         $response_data = array();
 
-        if ($tst->searchPlace($id, $usuario, $email, $password, $nombre, $apellido_paterno, $apellido_materno)) {
+        if ($tst->searchPlaces($id, $tipo, $precio, $distancia, $musica)) {
             $response_data['error'] = false;
             $response_data['message'] = 'Actualización exitosa';
-            $response_data['user'] = $tst->getUserByEmail($email);
+            // $response_data['user'] = $tst->getUserByEmail($email);
         } else {
             $response_data['error'] = true;
             $response_data['message'] = 'No se actualizó';
@@ -361,36 +356,6 @@ $app->get('/visited/{id}', function (Request $request, Response $response) {
     $places = $tst->getAllVisitedPlacesByUser($id);
     return $response->withJson(array("users" => $places));
 });
-
-/**
- * Se envia un mensaje a un usuario
- */
-/*$app->post('/sendmessage', function (Request $request, Response $response) {
-    $params = isTheseParametersAvailable(array('from', 'to', 'title', 'message'));
-    if (!$params["error"]) {
-        $request_data = $request->getParsedBody();
-        $from = $request_data['from'];
-        $to = $request_data['to'];
-        $title = $request_data['title'];
-        $message = $request_data['message'];
-
-        $tst = new TstOperation();
-
-        $response_data = array();
-
-        if ($tst->sendMessage($from, $to, $title, $message)) {
-            $response_data['error'] = false;
-            $response_data['message'] = 'Mensaje enviado';
-        } else {
-            $response_data['error'] = true;
-            $response_data['message'] = 'No se pudo enviar el mensaje';
-        }
-
-        return $response->withJson($response_data);
-    } else {
-        return $response->withJson($params);
-    }
-});*/
 
 $app->post('/opinion/{id}', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('id_sitio', 'gusto', 'precio', 'comentario'));
