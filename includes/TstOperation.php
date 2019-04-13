@@ -425,7 +425,7 @@ class TstOperation
     function getAllPoints()
     {
         $result = $this->endpoint->query("
-        SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica ?idUsuarioSitio ?calif ?comm ?idComm ?gusto 
+        SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
         WHERE {
             ?sujeto su:idSitio ?id .
             ?sujeto a [
@@ -437,17 +437,6 @@ class TstOperation
             ?sujeto su:tienePropiedad/su:musica ?musica .
             OPTIONAL { ?sujeto su:tienePropiedad/su:latitud ?latitud . }
             OPTIONAL { ?sujeto su:tienePropiedad/su:longitud ?longitud . }
-            OPTIONAL {
-                ?user su:idUsuario 768177 .
-                ?user su:visito ?v .
-                ?v su:sitioVisitado ?sujeto .
-                ?v su:idUsuarioSitio ?idUsuarioSitio .
-                ?v su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?calif .
-                ?v su:dejaComentario ?c . 
-                ?c su:conComentario ?comm .
-                ?c su:idUsuarioComen ?idComm .
-                ?v su:leGusto ?gusto .
-            }
         }
         LIMIT 5"
         );
@@ -468,7 +457,7 @@ class TstOperation
             $temp['musica'] = $place->musica->getValue();
 
             // Visito el sitio
-            $visito = array();
+            /*$visito = array();
 
             if (isset($place->idUsuarioSitio))
                 $visito['id'] = $place->idUsuarioSitio->getValue();
@@ -481,7 +470,7 @@ class TstOperation
             $visitantes['usuario'] = "incubo";
             $visitantes['email'] = "usuario@gmail.com";
             // $visito['visitantes'] = $visitantes;
-            $temp['visitaron'] = $visito;
+            $temp['visitaron'] = $visito;*/
             $comentario = array();
             if (isset($place->idComm))
                 $comentario['id'] = intval($place->idComm->getValue());
