@@ -1,9 +1,12 @@
 <?php
 
+use Geokit\Math;
+
 class TstOperation
 {
     private $gs;
     private $endpoint;
+    private $math;
 
     function __construct()
     {
@@ -20,10 +23,12 @@ class TstOperation
              $this->client = new EasyRdf_Http_Client(null, $config)
          );
 
-        $this->gs = new  EasyRdf_GraphStore('http://localhost:3030/repositories/ssrsi/rdf-graphs/service');
+        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/repositories/ssrsi/rdf-graphs/service');
 
         $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/ssrsi",
             "http://localhost:3030/repositories/ssrsi/statements");
+
+        $this->math = new Math();
     }
 
     /***
@@ -336,90 +341,86 @@ class TstOperation
         return $users;
     }
 
-    function searchPlaces($id, $type, $price, $distance, $music)
+    function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user)
     {
-        $user = $this->endpoint->query("
-        SELECT ?sujeto ?nombre ?usuario  ?email
+        $result = $this->endpoint->query("
+        SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
         WHERE {
-            ?sujeto su:idUsuario " . $id . " .
-            ?sujeto su:nombre ?nombre .
-            ?sujeto su:usuario ?usuario .
-            ?sujeto su:email ?email .
-        }");
-        $users = array();
-        $temp = array();
-        $temp['id'] = intval($id);
-        $temp['nombre'] = $user->current()->nombre->getValue();
-        $temp['usuario'] = $user->current()->usuario->getValue();
-        $temp['email'] = $user->current()->email->getValue();
-        $temp['visito'] = array();
+            ?sujeto su:idSitio ?id .
+            ?sujeto a [
+                a owl:Restriction;
+                owl:onProperty su:tieneUnValorMEDI;
+                owl:someValuesFrom ?medi
+            ] .
+            ?sujeto su:tienePropiedad/su:direccionSitio ?dir .
+            ?sujeto su:tienePropiedad/su:musica " . $music . " .
+            OPTIONAL { ?sujeto su:tienePropiedad/su:latitud ?latitud . }
+            OPTIONAL { ?sujeto su:tienePropiedad/su:longitud ?longitud . }
+        } LIMIT 5"
+        );
 
-        $visited = $this->endpoint->query("
-        SELECT ?sujeto ?a ?sitio ?precio ?comentario ?c ?gusto
-        WHERE {
-            ?sujeto su:idUsuario " . $temp['id'] . " .
-            ?sujeto su:visito ?a . 
-            ?a su:sitioVisitado ?sitio .
-            ?a su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
-            ?a su:dejaComentario ?c . 
-            ?c su:conComentario ?comentario .
-            ?a su:leGusto ?gusto .
-        }");
+        $points = array();
+        foreach ($result as $place) {
+            $sujeto = $place->sujeto->shorten();
+            $temp_id = $place->id->getValue();
 
-        $temp_1 = array();
-        foreach ($visited as $place) {
-            $temp_comentario = array();
-            $temp_usuario = array();
+            $temp = array();
+            $temp['id'] = $temp_id;
+            $temp['medi'] = $place->medi->localName();
+            if (isset($place->latitud))
+                $temp['latitud'] = $place->latitud->getValue();
+            if (isset($place->longitud))
+                $temp['longitud'] = $place->longitud->getValue();
+            $temp['direccion'] = $place->dir->getValue();
+            $temp['musica'] = $music;
 
-            $id_visitado = $this->getIdFromURI($place->a->getUri(), "r_user_place_");
-            $id_comentario = $this->getIdFromURI($place->c->getUri(), "r_user_comment_");
+            $this->calculateDistance($lat_user, $long_user, $temp['latitud'], $temp['longitud']);
 
-            $temp_usuario['id'] = $temp['id'];
-            $temp_usuario['usuario'] = $temp['usuario'];
-            $temp_usuario['email'] = $temp['email'];
-
-            $temp_comentario['comentario'] = $place->comentario->getValue();
-            $temp_comentario['id'] = $id_comentario;
-            $temp_comentario['user'] = $temp_usuario;
-
-            $temp_1['id'] = $id_visitado;
-            $temp_1['sitio_src'] = $place->sitio->shorten();
-            $temp_1['precio'] = $place->precio->shorten();
-            $temp_1['gusto'] = $place->gusto->getValue();
-            $temp_1['comentario'] = $temp_comentario;
-            $temp_1['sitio'] = array();
-
-            // Propiedades
-            $temp_2 = $this->getBasePropsPlace($temp_1['sitio_src']);
+            /*$comentario = array();
+            if (isset($place->idComm))
+                $comentario['id'] = intval($place->idComm->getValue());
+            if (isset($place->comm))
+                $comentario['comentario'] = $place->comm->getValue();
+            $visito['comentario'] = $comentario;*/
 
             // Nombres
-            $temp_2['nombres'] = $this->getNamesOfPlace($temp_1['sitio_src']);
+            $temp['nombres'] = $this->getNamesOfPlace($sujeto);
 
             // Calificaciones
-            $ratings = $this->getRatingsOfPlace($temp_1['sitio_src']);
-            $temp_2['calificaciones'] = $ratings;
-            $temp_2['total'] = $this->getRatingsTotal($ratings);
+            $ratings = $this->getRatingsOfPlace($sujeto);
+            $temp['calificaciones'] = $ratings;
+            $temp['total'] = $this->getRatingsTotal($ratings);
 
             // Categorias
-            $temp_2['categorias'] = $this->getCategoriesOfPlace($temp_1['sitio_src']);
+            $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
 
             // Imagenes
-            $temp_2['imagenes'] = $this->getImagesOfPlace($temp_1['sitio_src']);
+            $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
 
             // Comentarios
-            $temp_comments1 = $this->getCommentsOfPlace($temp_1['sitio_src']);
-            $temp_comments2 = $this->getCommentOfPlaceFromUser($temp_1['sitio_src'], $temp['id']);
+            $temp_comments1 = $this->getCommentsOfPlace($sujeto );
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto, $temp_id);
             $comments = array_merge($temp_comments1, $temp_comments2);
+            $temp['comentarios'] = $comments;
 
-            $temp_2['comentarios'] = $comments;
-
-            array_push($temp_1['sitio'], $temp_2);
-            array_push($temp['visito'], $temp_1);
-
+            array_push($points, $temp);
         }
-        array_push($users, $temp);
+        // return $points;
+        return null;
+    }
 
-        return $users;
+    /**
+     * @param $lat_user
+     * @param $long_user
+     * @param $lat_place
+     * @param $long_place
+     */
+    function calculateDistance($lat_user, $long_user, $lat_place, $long_place) {
+        $distance = $this->math->distanceVincenty(
+            new Geokit\LatLng($lat_user, $long_user),
+            new Geokit\LatLng($lat_place, $long_place));
+
+        echo '<pre>' . var_export( $distance->meters(), true) . '</pre>';
     }
 
     function getAllPoints()
@@ -456,51 +457,12 @@ class TstOperation
             $temp['direccion'] = $place->dir->getValue();
             $temp['musica'] = $place->musica->getValue();
 
-            // Visito el sitio
-            /*$visito = array();
-
-            if (isset($place->idUsuarioSitio))
-                $visito['id'] = $place->idUsuarioSitio->getValue();
-            if (isset($place->gusto))
-                $visito['gusto'] = $place->gusto->getValue();
-            if (isset($place->calif))
-                $visito['precio'] = $place->calif->shorten();
-            $visitantes = array();
-            $visitantes['id'] = 768177;
-            $visitantes['usuario'] = "incubo";
-            $visitantes['email'] = "usuario@gmail.com";
-            // $visito['visitantes'] = $visitantes;
-            $temp['visitaron'] = $visito;*/
-            $comentario = array();
+            /*$comentario = array();
             if (isset($place->idComm))
                 $comentario['id'] = intval($place->idComm->getValue());
             if (isset($place->comm))
                 $comentario['comentario'] = $place->comm->getValue();
-            $visito['comentario'] = $comentario;
-            /*
-             *
-            PREFIX su: <http://www.semanticweb.org/ranferi/ontologies/2018/9/ssrsi_onto#>
-PREFIX owl: <http://www.w3.org/2002/07/owl#>
-PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-INSERT DATA {
-    su:user_768177 su:visito _:r_user_place_5 .
-    _:r_user_place_5 a su:RelacionUsuarioSitio .
-    _:r_user_place_5 su:idUsuarioSitio 200001 .
-    _:r_user_place_5 su:sitioVisitado su:place_14005 .
-    _:r_user_place_5 su:daCalificacionPrecio _:r_user_rating_5 .
-    _:r_user_place_5 su:dejaComentario _:r_user_comment_5 .
-    _:r_user_place_5 su:leGusto "true"^^xsd:boolean .
-
-    _:r_user_rating_5 a su:RelacionUsuarioCalificacionPrecio .
-    _:r_user_rating_5 su:idUsuarioCalif 300001 .
-    _:r_user_rating_5 su:calificacionDeUsuarioPrecio su:Barato .
-
-    _:r_user_comment_5 a su:RelacionUsuarioComentario .
-    _:r_user_comment_5 su:idUsuarioComen 400001 .
-    _:r_user_comment_5 su:conComentario "Esta bienasdsadas" .
-}
-            */
-
+            $visito['comentario'] = $comentario;*/
 
             // Nombres
             $temp['nombres'] = $this->getNamesOfPlace($sujeto);
@@ -518,7 +480,7 @@ INSERT DATA {
 
             // Comentarios
             $temp_comments1 = $this->getCommentsOfPlace($sujeto );
-            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto, $temp_id);
             $comments = array_merge($temp_comments1, $temp_comments2);
             $temp['comentarios'] = $comments;
 
@@ -679,26 +641,8 @@ INSERT DATA {
                 }
     }
 
-
     function getBasePropsPlace($place_src)
     {
-        /*$names = array();
-        $result = $this->endpoint->query("
-                SELECT ?nombreSitio ?base
-                WHERE {
-                    " . $place_src . " su:tienePropiedad ?prop .
-                    ?prop su:nombreSitio ?nombreSitio .
-                    ?prop su:provieneDeBD ?base .
-                }"
-        );
-        foreach ($result as $name) {
-            $temp_2 = array();
-            $temp_2['nombre_sitio'] = $name->nombreSitio->getValue();
-            $temp_2['proviene'] = $name->base->localName();
-            array_push($names, $temp_2);
-        }*/
-
-
         $string = "
                 SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
                 WHERE {
@@ -858,14 +802,15 @@ INSERT DATA {
 
     }
 
-    function getCommentOfPlaceFromUser($place_src, $id_user = null)
+    function getCommentOfPlaceFromUser($place_src, $id_sitio)
     {
         $comments = array();
         $query = "
-            SELECT ?id ?usuario ?correo ?blank_c ?comentario 
+            SELECT ?id ?usuario ?correo ?blank_c ?comentario ?u ?idS
             WHERE {
                 ?u su:sitioVisitado " . $place_src . " .
                 ?user su:visito ?u .
+                ?u su:idUsuarioSitio ?idS .
                 ?u su:dejaComentario ?blank_c .
                 ?blank_c su:conComentario ?comentario .
                 ?user su:idUsuario ?id .
@@ -888,6 +833,21 @@ INSERT DATA {
             $temp_5['id'] = $comment->id->getValue();
             $temp_5['usuario'] = $comment->usuario->getValue();
             $temp_5['email'] = $comment->correo->getValue();
+            /*$visito = array();
+            $id_user_place = $this->getIdFromURI($comment->blank_c->getUri(), "r_user_place_");
+            $visito['id'] = $id_user_place;
+            $visito['sitio_src'] = $place_src;
+            $visito['precio'] = $place_src;
+            $visito['gusto'] = $place_src;
+            $visito['co'] = $place_src;
+            $visito['sitio'] = array();
+
+            $sitio = array();
+            $sitio['id'] = $id_sitio;
+            array_push($visito['sitio'], $sitio);
+            $temp_5['visito'] = array();
+            array_push($temp_5['visito'], $visito);*/
+
 
             $temp_4['user'] = $temp_5;
             array_push($comments, $temp_4);
@@ -916,3 +876,60 @@ INSERT DATA {
     }
 
 }
+
+
+/*
+ *
+PREFIX su: <http://www.semanticweb.org/ranferi/ontologies/2018/9/ssrsi_onto#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+INSERT DATA {
+su:user_768177 su:visito _:r_user_place_5 .
+_:r_user_place_5 a su:RelacionUsuarioSitio .
+_:r_user_place_5 su:idUsuarioSitio 200001 .
+_:r_user_place_5 su:sitioVisitado su:place_14005 .
+_:r_user_place_5 su:daCalificacionPrecio _:r_user_rating_5 .
+_:r_user_place_5 su:dejaComentario _:r_user_comment_5 .
+_:r_user_place_5 su:leGusto "true"^^xsd:boolean .
+
+_:r_user_rating_5 a su:RelacionUsuarioCalificacionPrecio .
+_:r_user_rating_5 su:idUsuarioCalif 300001 .
+_:r_user_rating_5 su:calificacionDeUsuarioPrecio su:Barato .
+
+_:r_user_comment_5 a su:RelacionUsuarioComentario .
+_:r_user_comment_5 su:idUsuarioComen 400001 .
+_:r_user_comment_5 su:conComentario "Esta bienasdsadas" .
+}
+*/
+
+/*$names = array();
+$result = $this->endpoint->query("
+        SELECT ?nombreSitio ?base
+        WHERE {
+            " . $place_src . " su:tienePropiedad ?prop .
+            ?prop su:nombreSitio ?nombreSitio .
+            ?prop su:provieneDeBD ?base .
+        }"
+);
+foreach ($result as $name) {
+    $temp_2 = array();
+    $temp_2['nombre_sitio'] = $name->nombreSitio->getValue();
+    $temp_2['proviene'] = $name->base->localName();
+    array_push($names, $temp_2);
+}*/
+
+// Visito el sitio
+/*$visito = array();
+
+if (isset($place->idUsuarioSitio))
+    $visito['id'] = $place->idUsuarioSitio->getValue();
+if (isset($place->gusto))
+    $visito['gusto'] = $place->gusto->getValue();
+if (isset($place->calif))
+    $visito['precio'] = $place->calif->shorten();
+$visitantes = array();
+$visitantes['id'] = 768177;
+$visitantes['usuario'] = "incubo";
+$visitantes['email'] = "usuario@gmail.com";
+// $visito['visitantes'] = $visitantes;
+$temp['visitaron'] = $visito;*/

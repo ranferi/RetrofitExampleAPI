@@ -306,7 +306,7 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
 });
 
 
-$app->get('/search', function (Request $request, Response $response) {
+$app->post('/search', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('id', 'tipo', 'precio', 'distancia'));
     if (!$params["error"]) {
         $request_data = $request->getParsedBody();
@@ -316,10 +316,12 @@ $app->get('/search', function (Request $request, Response $response) {
         $distancia = $request_data['distancia'];
         $musica = $request_data['musica'] ?: '';
 
+        echo '<pre>' . var_export($request->getParsedBody(), true) . '</pre>';
+
         $tst = new TstOperation();
         $response_data = array();
 
-        if ($tst->searchPlaces($id, $tipo, $precio, $distancia, $musica)) {
+        if ($tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084)) {
             $response_data['error'] = false;
             $response_data['message'] = 'Actualización exitosa';
             // $response_data['user'] = $tst->getUserByEmail($email);
