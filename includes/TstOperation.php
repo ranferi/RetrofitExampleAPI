@@ -374,7 +374,9 @@ class TstOperation
             $temp['direccion'] = $place->dir->getValue();
             $temp['musica'] = $music;
 
-            $this->calculateDistance($lat_user, $long_user, $temp['latitud'], $temp['longitud']);
+            $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $temp['latitud'], $temp['longitud']));
+
+            if ($distance != $distanceFromPlace) continue;
 
             /*$comentario = array();
             if (isset($place->idComm))
@@ -406,6 +408,7 @@ class TstOperation
             array_push($points, $temp);
         }
         // return $points;
+        echo '<pre>' . var_export($points, true) . '</pre>';
         return null;
     }
 
@@ -416,11 +419,19 @@ class TstOperation
      * @param $long_place
      */
     function calculateDistance($lat_user, $long_user, $lat_place, $long_place) {
-        $distance = $this->math->distanceVincenty(
+        return $this->math->distanceVincenty(
             new Geokit\LatLng($lat_user, $long_user),
             new Geokit\LatLng($lat_place, $long_place));
+        // echo '<pre>' . var_export( $distance->meters(), true) . '</pre>';
+    }
 
-        echo '<pre>' . var_export( $distance->meters(), true) . '</pre>';
+    function compareDistance($distanceWithinPointUser) {
+        $distance = '';
+        if ($distanceWithinPointUser >= 0.0 || $distanceWithinPointUser < 100.0) $distance = "Cerca";
+        else if ($distanceWithinPointUser >= 100.0 || $distanceWithinPointUser < 500.0) $distance = "Normal";
+        // if ($distanceWithinPoints >= 0.0 || $distanceWithinPoints < 100) $distance = "Cerca";
+        else $distance = "Lejos";
+        return $distance;
     }
 
     function getAllPoints()

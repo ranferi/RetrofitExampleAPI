@@ -314,16 +314,18 @@ $app->post('/search', function (Request $request, Response $response) {
         $tipo = $request_data['tipo'];
         $precio = $request_data['precio'];
         $distancia = $request_data['distancia'];
-        $musica = $request_data['musica'] ?: '';
+        $musica = $request_data['musica'];
 
-        echo '<pre>' . var_export($request->getParsedBody(), true) . '</pre>';
+        // echo '<pre>' . var_export($request->getParsedBody(), true) . '</pre>';
 
         $tst = new TstOperation();
         $response_data = array();
+        $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084);
 
-        if ($tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084)) {
+        if ($result) {
             $response_data['error'] = false;
             $response_data['message'] = 'Actualización exitosa';
+            // $response
             // $response_data['user'] = $tst->getUserByEmail($email);
         } else {
             $response_data['error'] = true;
