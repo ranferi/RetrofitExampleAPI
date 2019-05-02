@@ -352,38 +352,33 @@ class TstOperation
                 owl:onProperty su:tieneUnValorMEDI;
                 owl:someValuesFrom ?medi
             ] .
+            ?sujeto a [
+                a owl:Restriction;
+                owl:onProperty su:tienePrecio;
+                owl:someValuesFrom su:" . $price . "
+            ] .
             ?sujeto su:tienePropiedad/su:direccionSitio ?dir .
             ?sujeto su:tienePropiedad/su:musica " . $music . " .
-            OPTIONAL { ?sujeto su:tienePropiedad/su:latitud ?latitud . }
-            OPTIONAL { ?sujeto su:tienePropiedad/su:longitud ?longitud . }
+            ?sujeto su:tienePropiedad/su:latitud ?latitud .
+            ?sujeto su:tienePropiedad/su:longitud ?longitud .
         } LIMIT 5"
         );
 
         $points = array();
         foreach ($result as $place) {
+            $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $temp['latitud'], $temp['longitud']));
+            if ($distance != $distanceFromPlace) continue;
+
             $sujeto = $place->sujeto->shorten();
             $temp_id = $place->id->getValue();
 
             $temp = array();
             $temp['id'] = $temp_id;
             $temp['medi'] = $place->medi->localName();
-            if (isset($place->latitud))
-                $temp['latitud'] = $place->latitud->getValue();
-            if (isset($place->longitud))
-                $temp['longitud'] = $place->longitud->getValue();
+            $temp['latitud'] = $place->latitud->getValue();
+            $temp['longitud'] = $place->longitud->getValue();
             $temp['direccion'] = $place->dir->getValue();
             $temp['musica'] = $music;
-
-            $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $temp['latitud'], $temp['longitud']));
-
-            if ($distance != $distanceFromPlace) continue;
-
-            /*$comentario = array();
-            if (isset($place->idComm))
-                $comentario['id'] = intval($place->idComm->getValue());
-            if (isset($place->comm))
-                $comentario['comentario'] = $place->comm->getValue();
-            $visito['comentario'] = $comentario;*/
 
             // Nombres
             $temp['nombres'] = $this->getNamesOfPlace($sujeto);
@@ -428,7 +423,7 @@ class TstOperation
     function compareDistance($distanceWithinPointUser) {
         $distance = '';
         if ($distanceWithinPointUser >= 0.0 || $distanceWithinPointUser < 100.0) $distance = "Cerca";
-        else if ($distanceWithinPointUser >= 100.0 || $distanceWithinPointUser < 500.0) $distance = "Normal";
+        else if ($distanceWithinPointUser >= 100.0 || $distanceWithinPointUser < 500.0) $distance = "Media";
         // if ($distanceWithinPoints >= 0.0 || $distanceWithinPoints < 100) $distance = "Cerca";
         else $distance = "Lejos";
         return $distance;
