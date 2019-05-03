@@ -343,88 +343,139 @@ class TstOperation
 
     function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user)
     {
+        $a = is_array($type) ? $type : (array)$type;
+        $allPoints = array();
+        foreach ($a as $cat) {
+            $result = $this->searchPlace($price, $cat, $music);
+
+            $points = array();
+            foreach ($result as $place) {
+                $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
+                if ($distance != $distanceFromPlace) continue;
+
+                $sujeto = $place->sujeto->shorten();
+                $temp_id = $place->id->getValue();
+
+                $temp = array();
+                $temp['id'] = $temp_id;
+                $temp['medi'] = $place->medi->localName();
+                $temp['latitud'] = $place->latitud->getValue();
+                $temp['longitud'] = $place->longitud->getValue();
+                $temp['direccion'] = $place->dir->getValue();
+                $temp['musica'] = $music;
+
+                // Nombres
+                $temp['nombres'] = $this->getNamesOfPlace($sujeto);
+
+                // Calificaciones
+                $ratings = $this->getRatingsOfPlace($sujeto);
+                $temp['calificaciones'] = $ratings;
+                $temp['total'] = $this->getRatingsTotal($ratings);
+
+                // Categorias
+                $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
+
+                // Imagenes
+                $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
+
+                // Comentarios
+                $temp_comments1 = $this->getCommentsOfPlace($sujeto );
+                $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto, $temp_id);
+                $comments = array_merge($temp_comments1, $temp_comments2);
+                $temp['comentarios'] = $comments;
+
+                array_push($points, $temp);
+            }
+
+            array_push($allPoints, $points);
+        }
+
+        if (sizeOf($points) < 2) {
+            $cats = $this->searchChildCat($type);
+            $a = $this->searchPlaces($id, $cats, $price, $distance, $music, $lat_user, $long_user);
+        } else {
+            return $allPoints;
+        }
+        // return $points;
+        echo '<pre>' . var_export($allPoints, true) . '</pre>';
+        // return null;
+    }
+
+    function searchChildCat($type)
+    {
         $result = $this->endpoint->query("
-        SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
+        SELECT ?sub
+        WHERE {
+            {
+            SELECT ?sub (count(?mid) as ?distance)
+            WHERE {
+                ?mid rdfs:subClassOf* " . $type . " .
+                ?sub rdfs:subClassOf+ ?mid .
+                FILTER(?sub != " . $type . " ) .
+                FILTER(?sub != owl:Nothing ) .
+            }
+            group by ?sub
+            order by ?sub
+            }
+            FILTER( ?distance < 4 )
+        } ");
+        // ?categoria rdfs:label " . $type . " .
+        return $result;
+    }
+
+    /**
+     * @param $price
+     * @param $type
+     * @param $music
+     * @return object
+     */
+    function searchPlace($price, $type, $music)
+    {
+        $result = $this->endpoint->query("
+        SELECT DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
         WHERE {
             ?sujeto su:idSitio ?id .
             ?sujeto a [
-                a owl:Restriction;
-                owl:onProperty su:tieneUnValorMEDI;
+                a owl:Restriction ;
+                owl:onProperty su:tieneUnValorMEDI ;
                 owl:someValuesFrom ?medi
             ] .
             ?sujeto a [
-                a owl:Restriction;
-                owl:onProperty su:tienePrecio;
-                owl:someValuesFrom su:" . $price . "
+                a owl:Restriction ;
+                owl:onProperty su:tienePrecio ;
+                owl:someValuesFrom " . $price . "
             ] .
+            ?sujeto su:tienePropiedad/su:categoria/a " . $type ." .
             ?sujeto su:tienePropiedad/su:direccionSitio ?dir .
             ?sujeto su:tienePropiedad/su:musica " . $music . " .
             ?sujeto su:tienePropiedad/su:latitud ?latitud .
             ?sujeto su:tienePropiedad/su:longitud ?longitud .
-        } LIMIT 5"
+        }"
         );
-
-        $points = array();
-        foreach ($result as $place) {
-            $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $temp['latitud'], $temp['longitud']));
-            if ($distance != $distanceFromPlace) continue;
-
-            $sujeto = $place->sujeto->shorten();
-            $temp_id = $place->id->getValue();
-
-            $temp = array();
-            $temp['id'] = $temp_id;
-            $temp['medi'] = $place->medi->localName();
-            $temp['latitud'] = $place->latitud->getValue();
-            $temp['longitud'] = $place->longitud->getValue();
-            $temp['direccion'] = $place->dir->getValue();
-            $temp['musica'] = $music;
-
-            // Nombres
-            $temp['nombres'] = $this->getNamesOfPlace($sujeto);
-
-            // Calificaciones
-            $ratings = $this->getRatingsOfPlace($sujeto);
-            $temp['calificaciones'] = $ratings;
-            $temp['total'] = $this->getRatingsTotal($ratings);
-
-            // Categorias
-            $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
-
-            // Imagenes
-            $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
-
-            // Comentarios
-            $temp_comments1 = $this->getCommentsOfPlace($sujeto );
-            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto, $temp_id);
-            $comments = array_merge($temp_comments1, $temp_comments2);
-            $temp['comentarios'] = $comments;
-
-            array_push($points, $temp);
-        }
-        // return $points;
-        echo '<pre>' . var_export($points, true) . '</pre>';
-        return null;
+        return $result;
     }
+
 
     /**
      * @param $lat_user
      * @param $long_user
      * @param $lat_place
      * @param $long_place
+     * @return \Geokit\Distance
      */
     function calculateDistance($lat_user, $long_user, $lat_place, $long_place) {
         return $this->math->distanceVincenty(
             new Geokit\LatLng($lat_user, $long_user),
             new Geokit\LatLng($lat_place, $long_place));
-        // echo '<pre>' . var_export( $distance->meters(), true) . '</pre>';
     }
 
+    /**
+     * @param $distanceWithinPointUser
+     * @return string
+     */
     function compareDistance($distanceWithinPointUser) {
-        $distance = '';
         if ($distanceWithinPointUser >= 0.0 || $distanceWithinPointUser < 100.0) $distance = "Cerca";
         else if ($distanceWithinPointUser >= 100.0 || $distanceWithinPointUser < 500.0) $distance = "Media";
-        // if ($distanceWithinPoints >= 0.0 || $distanceWithinPoints < 100) $distance = "Cerca";
         else $distance = "Lejos";
         return $distance;
     }
@@ -765,8 +816,7 @@ class TstOperation
         ?usuario su:visito ?v .
         ?v su:sitioVisitado ?sujeto .
         ?usuario su:idUsuario 768178 .
-    }";
-        return $ratings;
+    }";        return $ratings;
     }
 
     function getRatingsTotal($ratings)
