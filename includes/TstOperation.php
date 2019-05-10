@@ -7,6 +7,7 @@ class TstOperation
     private $gs;
     private $endpoint;
     private $math;
+    private $priceArray = array(0 => 'su:Barato', 1 => 'su:Moderado', 2 => 'su:Caro', 3 => 'su:MuyCaro');
 
     function __construct()
     {
@@ -341,7 +342,7 @@ class TstOperation
         return $users;
     }
 
-    function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user)
+    function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user, $root = false)
     {
         $a = is_array($type) ? $type : (array)$type;
         $allPoints = array();
@@ -386,19 +387,60 @@ class TstOperation
 
                 array_push($points, $temp);
             }
-
             array_push($allPoints, $points);
         }
 
-        if (sizeOf($points) < 2) {
+        if (sizeOf($allPoints) < 3) {
             $cats = $this->searchChildCat($type);
-            $a = $this->searchPlaces($id, $cats, $price, $distance, $music, $lat_user, $long_user);
+            $clave = array_search($price, $this->priceArray);
+            $newPrice = $this->priceArray[($clave - 1) % 4];
+            $a = $this->searchPlaces($id, $cats, $price, $distance, $music, $lat_user, $long_user, false);
+            $diff = array_udiff($a, $allPoints, function ($obj_a, $obj_b) {
+                return ($obj_a["id"] - $obj_b["id"]);
+            });
+
+            if (!empty($diff)) {
+                array_push($allPoints, $diff);
+            }
+
+            if (sizeof($a) < 3 && $root) {
+                $parentCat = $this->searchParentCat($type);
+                $b = $this->searchPlaces($id, $parentCat, $price, $distance, $music, $lat_user, $long_user, false);
+                $diff = array_udiff($b, $allPoints, function ($obj_a, $obj_b) {
+                    return ($obj_a["id"] - $obj_b["id"]);
+                });
+                if (!empty($diff)) {
+                    array_push($allPoints, $diff);
+                }
+            }
+            return $allPoints;
         } else {
             return $allPoints;
         }
         // return $points;
-        echo '<pre>' . var_export($allPoints, true) . '</pre>';
+        //echo '<pre>' . var_export($allPoints, true) . '</pre>';
         // return null;
+    }
+
+    function searchParentCat($type)
+    {
+        $result = $this->endpoint->query("
+        SELECT ?sup ?mid ?distance
+        WHERE {
+            {
+                SELECT ?sup (count(?mid) - 1 as ?distance)
+                WHERE {
+                    " . $type ." rdfs:subClassOf+ ?mid .
+                    ?mid rdfs:subClassOf* ?sup .
+                    FILTER (?sup != " . $type .") .
+                    FILTER (?sup != owl:Nothing ) .
+                }
+                GROUP BY ?sup 
+                ORDER BY ?sup 
+            }
+            FILTER (?distance < 2)
+        }");
+        return $result;
     }
 
     function searchChildCat($type)
@@ -407,19 +449,18 @@ class TstOperation
         SELECT ?sub
         WHERE {
             {
-            SELECT ?sub (count(?mid) as ?distance)
+            SELECT ?sub (count(?mid) - 1 as ?distance)
             WHERE {
                 ?mid rdfs:subClassOf* " . $type . " .
                 ?sub rdfs:subClassOf+ ?mid .
                 FILTER(?sub != " . $type . " ) .
                 FILTER(?sub != owl:Nothing ) .
             }
-            group by ?sub
-            order by ?sub
-            }
-            FILTER( ?distance < 4 )
+            GROUP BY ?sub 
+            ORDER BY ?sub
+        }
+        FILTER( ?distance < 2 )
         } ");
-        // ?categoria rdfs:label " . $type . " .
         return $result;
     }
 

@@ -142,6 +142,100 @@ $app->get('/prueba', function (Request $request, Response $response) {
     return $response->withJson(array("places" => $places));
 });
 
+$app->get('/compa', function (Request $request, Response $response) {
+    $points = array();
+    $temp = array();
+    $temp['id'] = 123;
+    $temp['medi'] = "Buena1";
+    $temp['musica'] = true;
+    array_push($points, $temp);
+
+    $points1 = array();
+    $temp1 = array();
+    $temp1['id'] = 123;
+    $temp1['medi'] = "Buena2";
+    $temp1['musica'] = false;
+    array_push($points1, $temp1);
+
+
+    $temp2 = array();
+    $temp2['id'] = 124;
+    $temp2['medi'] = "Buena3";
+    $temp2['musica'] = false;
+    array_push($points1, $temp2);
+    echo '<pre>' . (-1 % 4 ). '</pre>';
+
+
+    $diff = array_udiff($points, $points1, function ($obj_a, $obj_b) {
+        //echo '<pre>' . var_export($obj_b, true) . '</pre>';
+        //echo "\n\n\n" ;
+        //echo '<pre>' . var_export($obj_a, true) . '</pre>';
+        return ($obj_a["id"] - $obj_b["id"]);
+    });
+
+    if (!empty($diff)) {
+        array_push($points1, $diff);
+    }
+
+    return $response->withJson($points1);
+});
+
+function compare_ids($obj_a, $obj_b) {
+    //echo '<pre>' . var_export($obj_b, true) . '</pre>';
+    //echo "\n\n\n" ;
+    //echo '<pre>' . var_export($obj_a, true) . '</pre>';
+    return ($obj_a["id"] - $obj_b["id"]);
+}
+
+/*function array_diff_assoc_recursive($array1, $array2)
+{
+    foreach($array1 as $key => $value)
+    {
+        if(is_array($value))
+        {
+            if(!isset($array2[$key]))
+            {
+                $difference[$key] = $value;
+            }
+            elseif(!is_array($array2[$key]))
+            {
+                $difference[$key] = $value;
+            }
+            else
+            {
+                $new_diff = array_diff_assoc_recursive($value, $array2[$key]);
+                if($new_diff != FALSE)
+                {
+                    $difference[$key] = $new_diff;
+                }
+            }
+        }
+        elseif(!isset($array2[$key]) || $array2[$key] != $value)
+        {
+            $difference[$key] = $value;
+        }
+    }
+    return !isset($difference) ? 0 : $difference;
+}*/
+
+function array_diff_assoc_recursive($array1, $array2) {
+    $difference=array();
+    foreach($array1 as $key => $value) {
+        if( is_array($value) ) {
+            if( !isset($array2[$key]) || !is_array($array2[$key]) ) {
+                $difference[$key] = $value;
+            } else {
+                $new_diff = array_diff_assoc_recursive($value, $array2[$key]);
+                if( !empty($new_diff) )
+                    $difference[$key] = $new_diff;
+            }
+        } else if( !array_key_exists($key,$array2) || $array2[$key] !== $value ) {
+            $difference[$key] = $value;
+        }
+    }
+    return !isset($difference) ? 0 : $difference;
+}
+
 /**
  * Se obtienen todos lo usuarios
  */
@@ -320,7 +414,7 @@ $app->post('/search', function (Request $request, Response $response) {
 
         $tst = new TstOperation();
         $response_data = array();
-        $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084);
+        $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084, true);
 
         if ($result) {
             $response_data['error'] = false;
