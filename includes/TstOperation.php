@@ -345,8 +345,10 @@ class TstOperation
     function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user, $root = false)
     {
         $a = is_array($type) ? $type : (array)$type;
+
         $allPoints = array();
         foreach ($a as $cat) {
+            // echo '<pre>' . var_export($cat, true) . '</pre>';
             $result = $this->searchPlace($price, $cat, $music);
 
             $points = array();
@@ -392,9 +394,8 @@ class TstOperation
 
         if (sizeOf($allPoints) < 3) {
             $cats = $this->searchChildCat($type);
-            $clave = array_search($price, $this->priceArray);
-            $newPrice = $this->priceArray[($clave - 1) % 4];
-            $a = $this->searchPlaces($id, $cats, $price, $distance, $music, $lat_user, $long_user, false);
+            $newPrice = $this->newPrice($price);
+            $a = $this->searchPlaces($id, $cats, $newPrice, $distance, $music, $lat_user, $long_user, false);
             $diff = array_udiff($a, $allPoints, function ($obj_a, $obj_b) {
                 return ($obj_a["id"] - $obj_b["id"]);
             });
@@ -422,6 +423,18 @@ class TstOperation
         // return null;
     }
 
+    function newPrice($price)
+    {
+        $clave = array_search($price, $this->priceArray);
+        $n = 4;
+        $r = $clave % $n;
+        if ($r < 0)
+        {
+            $r += abs($n);
+        }
+        return $this->priceArray[$r];
+    }
+
     function searchParentCat($type)
     {
         $result = $this->endpoint->query("
@@ -440,7 +453,12 @@ class TstOperation
             }
             FILTER (?distance < 2)
         }");
-        return $result;
+
+        $array = array();
+        foreach ($result as $cat) {
+            array_push($array, $cat->sup->shorten());
+        }
+        return $array;
     }
 
     function searchChildCat($type)
@@ -461,8 +479,56 @@ class TstOperation
         }
         FILTER( ?distance < 2 )
         } ");
-        return $result;
+        $array = array();
+        foreach ($result as $cat) {
+            array_push($array, $cat->sub->shorten());
+        }
+
+        // echo '<pre>' . var_export($array, true) . '</pre>';
+        return $array;
     }
+
+
+    function objectToArray($d) {
+        if (is_object($d)) {
+            // Gets the properties of the given object
+            // with get_object_vars function
+            $d = get_object_vars($d);
+        }
+
+        if (is_array($d)) {
+            /*
+            * Return array converted to object
+            * Using __FUNCTION__ (Magic constant)
+            * for recursive call
+            */
+            return array_map(array($this, __FUNCTION__), $d);
+        }
+        else {
+            // Return array
+            return $d;
+        }
+    }
+
+    function object_to_array($data)
+    {
+        if (is_array($data) || is_object($data))
+        {
+            $result = array();
+            foreach ($data as $key => $value)
+            {
+                $result[$key] = $this->object_to_array($value);
+            }
+            return $result;
+        }
+        return $data;
+    }
+
+/*    function objectToArray($o) {
+        $a = array();
+        foreach ($o as $k => $v) $a[$k] = (is_array($v) || is_object($v)) ? $this->objectToArray($v): $v;
+        return $a;
+    }*/
 
     /**
      * @param $price
@@ -502,12 +568,12 @@ class TstOperation
      * @param $long_user
      * @param $lat_place
      * @param $long_place
-     * @return \Geokit\Distance
+     * @return float
      */
     function calculateDistance($lat_user, $long_user, $lat_place, $long_place) {
         return $this->math->distanceVincenty(
             new Geokit\LatLng($lat_user, $long_user),
-            new Geokit\LatLng($lat_place, $long_place));
+            new Geokit\LatLng($lat_place, $long_place))->meters();
     }
 
     /**

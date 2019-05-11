@@ -163,7 +163,13 @@ $app->get('/compa', function (Request $request, Response $response) {
     $temp2['medi'] = "Buena3";
     $temp2['musica'] = false;
     array_push($points1, $temp2);
-    echo '<pre>' . (-1 % 4 ). '</pre>';
+    $n = 4;
+    $r = -1 % $n;
+    if ($r < 0)
+    {
+        $r += abs($n);
+    }
+    echo '<pre>' . $r . '</pre>';
 
 
     $diff = array_udiff($points, $points1, function ($obj_a, $obj_b) {
