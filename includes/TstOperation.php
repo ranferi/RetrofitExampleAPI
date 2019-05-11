@@ -397,6 +397,7 @@ class TstOperation
             $newPrice = $this->newPrice($price);
             $a = $this->searchPlaces($id, $cats, $newPrice, $distance, $music, $lat_user, $long_user, false);
             $diff = array_udiff($a, $allPoints, function ($obj_a, $obj_b) {
+                echo '<pre>' . var_export($obj_a, true) . '</pre>';
                 return ($obj_a["id"] - $obj_b["id"]);
             });
 
