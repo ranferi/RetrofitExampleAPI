@@ -425,7 +425,7 @@ $app->post('/search', function (Request $request, Response $response) {
         if ($result) {
             $response_data['error'] = false;
             $response_data['message'] = 'Actualización exitosa';
-            // $response_data['sitos'] = $result;
+            //$response_data['sitos'] = $result;
             // $response
             // $response_data['user'] = $tst->getUserByEmail($email);
         } else {

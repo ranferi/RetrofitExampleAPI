@@ -343,7 +343,7 @@ class TstOperation
         return $users;
     }
 
-    function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user, $root = false)
+    function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user, $root = false, $cat_visited = null)
     {
         $this->count++;
         $type_array = is_array($type) ? $type : (array)$type;
@@ -353,7 +353,6 @@ class TstOperation
 
             $result = $this->searchPlace($price, $cat, $music);
 
-            $points = array();
             foreach ($result as $place) {
                 $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
                 if ($distance != $distanceFromPlace) continue;
@@ -391,68 +390,61 @@ class TstOperation
 
                 array_push($allPoints, $temp);
             }
-            // array_push($allPoints, $points);
         }
-        // echo '<pre>' . var_export(sizeof($allPoints), true) . '</pre>';
+        // echo '<pre>' . var_export($allPoints, true) . '</pre>';
         if (sizeOf($allPoints) < 3) {
+            // echo '<pre>' . var_export($this->count, true) . '</pre>';
             $cats = $this->searchChildCat($type);
-            echo '<pre>' . var_export($cats, true) . '</pre>';
+            if ($cat_visited) {
+                $pos = array_search($cat_visited, $cats);
+                unset($cats[$pos]);
+            }
+
+            //echo '<pre>' . var_export($type, false) . '</pre>';
+            //echo '<pre>' . var_export($cats, false) . '</pre>';
 
             if (!empty($cats) && is_array($cats)) {
-
                 $a = array();
                 foreach ($cats as $cat) {
                     $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false);
-                    array_push($a, $temp);
+                    if (!empty($temp)) { $a = array_merge($a, $temp); }
                 }
-
                 if (!empty($a) && !empty($allPoints)) {
-                    $diff = array_udiff($a, $allPoints, function ($obj_a, $obj_b) {
-                        //echo '<pre>' . var_export($obj_a, true) . '</pre>';
-                        //echo '<pre>' . var_export($obj_b, true) . '</pre>';
-                        return ($obj_a["id"] - $obj_b["id"]);
-                    });
-
-                    if (!empty($diff)) {
-                        // echo '<pre>' . var_export($diff, true) . '</pre>';
-                        array_push($allPoints, $diff);
-                    }
+                    $diff = array_udiff($a, $allPoints, "self::compareArraysById");
+                    if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
+                } else if (!empty($allPoints)) {
+                    $allPoints = array_merge($allPoints, $a);
                 }
 
             }
-
-/*            if (sizeof($allPoints) < 3 && $root) {
+            if (sizeof($allPoints) < 3 && $root) {
                 $parentCat = $this->searchParentCat($type);
+
                 if (!empty($parentCat) && is_array($parentCat)) {
+                    // echo '<pre>' . var_export($parentCat, true) . '</pre>';
                     $b = array();
-                    foreach ($cats as $cat) {
-                        $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false);
-                        array_push($b, $temp);
+                    foreach ($parentCat as $cat) {
+                        $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false, $type);
+                        $b = array_merge($b, $temp);
                     }
 
                     if (!empty($b) && !empty($allPoints)) {
-                        $diff = array_udiff($b, $allPoints, function ($obj_a, $obj_b) {
-                            return ($obj_a["id"] - $obj_b["id"]);
-                        });
-                        if (!empty($diff)) {
-                            array_push($allPoints, $diff);
-                        }
+                        $diff = array_udiff($b, $allPoints, "self::compareArraysById");
+                        if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
+                    } else if (!empty($allPoints)) {
+                        $allPoints = array_merge($allPoints, $b);
                     }
-
                 }
-
-            }*/
-
+            }
             return $allPoints;
         } else {
-            //echo '<pre>' . var_export($allPoints, true) . '</pre>';
             return $allPoints;
         }
+    }
 
-        // return $allPoints;
-        // return $points;
-        //echo '<pre>' . var_export($allPoints, true) . '</pre>';
-        // return null;
+    function compareArraysById($obj_a, $obj_b)
+    {
+        return ($obj_a["id"] - $obj_b["id"]);
     }
 
     function newPrice($price)
@@ -488,8 +480,7 @@ class TstOperation
 
         $array = array();
         foreach ($result as $cat) {
-            if ($cat != null && isset($cat->sup))
-                array_push($array, $cat->sup->shorten());
+            if ($cat != null && isset($cat->sup)) array_push($array, $cat->sup->shorten());
         }
         return $array;
     }
@@ -514,58 +505,11 @@ class TstOperation
         } ");
 
         $array = array();
-
-        // if ($result->valid()) {}
         foreach ($result as $cat) {
-            // echo '<pre>' . var_export($cat->sub->shorten(), true) . '</pre>';
-            if (isset($cat->sub) && $cat != null)
-                array_push($array, $cat->sub->shorten());
+            if (isset($cat->sub) && $cat != null) array_push($array, $cat->sub->shorten());
         }
-
         return $array;
     }
-
-
-    function objectToArray($d) {
-        if (is_object($d)) {
-            // Gets the properties of the given object
-            // with get_object_vars function
-            $d = get_object_vars($d);
-        }
-
-        if (is_array($d)) {
-            /*
-            * Return array converted to object
-            * Using __FUNCTION__ (Magic constant)
-            * for recursive call
-            */
-            return array_map(array($this, __FUNCTION__), $d);
-        }
-        else {
-            // Return array
-            return $d;
-        }
-    }
-
-    function object_to_array($data)
-    {
-        if (is_array($data) || is_object($data))
-        {
-            $result = array();
-            foreach ($data as $key => $value)
-            {
-                $result[$key] = $this->object_to_array($value);
-            }
-            return $result;
-        }
-        return $data;
-    }
-
-/*    function objectToArray($o) {
-        $a = array();
-        foreach ($o as $k => $v) $a[$k] = (is_array($v) || is_object($v)) ? $this->objectToArray($v): $v;
-        return $a;
-    }*/
 
     /**
      * @param $price
