@@ -343,9 +343,9 @@ class TstOperation
         return $users;
     }
 
+    // echo '<pre>' . var_export($allPoints, true) . '</pre>';
     function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user, $root = false, $cat_visited = null)
     {
-        $this->count++;
         $type_array = is_array($type) ? $type : (array)$type;
 
         $allPoints = array();
@@ -391,23 +391,18 @@ class TstOperation
                 array_push($allPoints, $temp);
             }
         }
-        // echo '<pre>' . var_export($allPoints, true) . '</pre>';
+
         if (sizeOf($allPoints) < 3) {
-            // echo '<pre>' . var_export($this->count, true) . '</pre>';
             $cats = $this->searchChildCat($type);
             if ($cat_visited) {
                 $pos = array_search($cat_visited, $cats);
                 unset($cats[$pos]);
             }
-
-            //echo '<pre>' . var_export($type, false) . '</pre>';
-            //echo '<pre>' . var_export($cats, false) . '</pre>';
-
             if (!empty($cats) && is_array($cats)) {
                 $a = array();
                 foreach ($cats as $cat) {
                     $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false);
-                    if (!empty($temp)) { $a = array_merge($a, $temp); }
+                    if (!empty($temp)) $a = array_merge($a, $temp);
                 }
                 if (!empty($a) && !empty($allPoints)) {
                     $diff = array_udiff($a, $allPoints, "self::compareArraysById");
@@ -415,31 +410,34 @@ class TstOperation
                 } else if (!empty($allPoints)) {
                     $allPoints = array_merge($allPoints, $a);
                 }
-
             }
-            if (sizeof($allPoints) < 3 && $root) {
-                $parentCat = $this->searchParentCat($type);
+        }
 
-                if (!empty($parentCat) && is_array($parentCat)) {
-                    // echo '<pre>' . var_export($parentCat, true) . '</pre>';
-                    $b = array();
-                    foreach ($parentCat as $cat) {
-                        $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false, $type);
-                        $b = array_merge($b, $temp);
-                    }
+        if (sizeof($allPoints) < 3 && $root) {
+            $parentCat = $this->searchParentCat($type);
 
-                    if (!empty($b) && !empty($allPoints)) {
-                        $diff = array_udiff($b, $allPoints, "self::compareArraysById");
-                        if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
-                    } else if (!empty($allPoints)) {
-                        $allPoints = array_merge($allPoints, $b);
-                    }
+            if (!empty($parentCat) && is_array($parentCat)) {
+                // echo '<pre>' . var_export($parentCat, true) . '</pre>';
+                $b = array();
+                foreach ($parentCat as $cat) {
+                    $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false, $type);
+                    if (!empty($temp)) $b = array_merge($b, $temp);
+                }
+
+                if (!empty($b) && !empty($allPoints)) {
+                    $diff = array_udiff($b, $allPoints, "self::compareArraysById");
+                    if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
+                } else if (!empty($allPoints)) {
+                    $allPoints = array_merge($allPoints, $b);
                 }
             }
-            return $allPoints;
-        } else {
-            return $allPoints;
         }
+
+        if (sizeof($allPoints) < 3 && $root) {
+
+        }
+
+        return $allPoints;
     }
 
     function compareArraysById($obj_a, $obj_b)
