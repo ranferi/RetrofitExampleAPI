@@ -426,17 +426,13 @@ class TstOperation
                 if (!empty($b) && !empty($allPoints)) {
                     $diff = array_udiff($b, $allPoints, "self::compareArraysById");
                     if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
-                } else if (!empty($allPoints)) {
+                } /*else if (!empty($allPoints)) {
                     $allPoints = array_merge($allPoints, $b);
-                }
+                }*/
             }
         }
 
         if (sizeof($allPoints) < 3) {
-            $message_not_found = true;
-        }
-
-        if ($message_not_found) {
             $newPrice = $this->findNewPrice($price);
             $superCat = $this->searchSuperCat($type);
             if ($parentCat) {

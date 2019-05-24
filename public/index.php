@@ -420,10 +420,23 @@ $app->post('/search', function (Request $request, Response $response) {
 
         $tst = new TstOperation();
         $response_data = array();
+        // $tipo = su:Antro
+        // $precio = su:Moderado => su:Barato
+        // $distancia = Cerca
+        // $musica = false
         $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084, true);
+        if ($result < 3) {
+            $no_encotnre_priemrea = true;
+            $tst->searchPlaces(...=);
+        }
+        if ($result < 3) {
+            $no_encotnre_percio = true;
+            $tst->searchPlaces(...=);
+        }
 
         if ($result) {
             $response_data['error'] = false;
+            $response_data['sdfsd'] = $no_encotnre_priemrea;
             $response_data['message'] = 'Actualización exitosa';
             $response_data['sitos'] = $result;
             // $response
