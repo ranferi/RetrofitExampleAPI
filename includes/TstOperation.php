@@ -347,8 +347,11 @@ class TstOperation
     function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user, $root = false, $cat_visited = null)
     {
         $type_array = is_array($type) ? $type : (array)$type;
+        $message_not_found = false;
+        $parentCat = null;
 
         $allPoints = array();
+
         foreach ($type_array as $cat) {
 
             $result = $this->searchPlace($price, $cat, $music);
@@ -412,18 +415,14 @@ class TstOperation
                 }
             }
         }
-
         if (sizeof($allPoints) < 3 && $root) {
             $parentCat = $this->searchParentCat($type);
-
             if (!empty($parentCat) && is_array($parentCat)) {
-                // echo '<pre>' . var_export($parentCat, true) . '</pre>';
                 $b = array();
                 foreach ($parentCat as $cat) {
                     $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false, $type);
                     if (!empty($temp)) $b = array_merge($b, $temp);
                 }
-
                 if (!empty($b) && !empty($allPoints)) {
                     $diff = array_udiff($b, $allPoints, "self::compareArraysById");
                     if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
@@ -433,7 +432,30 @@ class TstOperation
             }
         }
 
-        if (sizeof($allPoints) < 3 && $root) {
+        if (sizeof($allPoints) < 3) {
+            $message_not_found = true;
+        }
+
+        if ($message_not_found) {
+            $newPrice = $this->findNewPrice($price);
+            $superCat = $this->searchSuperCat($type);
+            if ($parentCat) {
+                $pos = array_search($parentCat, $superCat);
+                unset($superCat[$pos]);
+            }
+            if (!empty($superCat) && is_array($superCat)) {
+                $c = array();
+                foreach ($superCat as $cat) {
+                    $temp = $this->searchPlaces($id, $cat, $newPrice, $distance, $music, $lat_user, $long_user, false);
+                    if (!empty($temp)) $c = array_merge($c, $temp);
+                }
+                if (!empty($c) && !empty($allPoints)) {
+                    $diff = array_udiff($c, $allPoints, "self::compareArraysById");
+                    if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
+                } else if (!empty($allPoints)) {
+                    $allPoints = array_merge($allPoints, $c);
+                }
+            }
 
         }
 
@@ -445,16 +467,36 @@ class TstOperation
         return ($obj_a["id"] - $obj_b["id"]);
     }
 
-    function newPrice($price)
+    function findNewPrice($price)
     {
         $clave = array_search($price, $this->priceArray);
         $n = 4;
-        $r = $clave % $n;
+        $r = ($clave - 1) % $n;
         if ($r < 0)
         {
             $r += abs($n);
         }
         return $this->priceArray[$r];
+    }
+
+    function searchSuperCat($type) {
+        $result = $this->endpoint->query("
+        SELECT ?super 
+        WHERE {
+            " . $type . " rdfs:subClassOf+ ?super .
+            FILTER NOT EXISTS {
+            
+                su:CategoriasFoursquare rdfs:subClassOf+ ?super .
+                }
+            FILTER (?super != " . $type . ") .
+            } 
+        ");
+
+        $array = array();
+        foreach ($result as $cat) {
+            if ($cat != null && isset($cat->super)) array_push($array, $cat->super->shorten());
+        }
+        return $array;
     }
 
     function searchParentCat($type)
