@@ -145,7 +145,7 @@ $app->get('/prueba', function (Request $request, Response $response) {
 $app->get('/compa', function (Request $request, Response $response) {
     $points = array();
     $temp = array();
-    $temp['id'] = 123;
+    $temp['id'] = 125;
     $temp['medi'] = "Buena1";
     $temp['musica'] = true;
     array_push($points, $temp);
@@ -163,13 +163,13 @@ $app->get('/compa', function (Request $request, Response $response) {
     $temp2['medi'] = "Buena3";
     $temp2['musica'] = false;
     array_push($points1, $temp2);
-    $n = 4;
+    /*$n = 4;
     $r = -1 % $n;
     if ($r < 0)
     {
         $r += abs($n);
     }
-    echo '<pre>' . $r . '</pre>';
+    echo '<pre>' . $r . '</pre>';*/
 
 
     $diff = array_udiff($points, $points1, function ($obj_a, $obj_b) {
@@ -179,11 +179,11 @@ $app->get('/compa', function (Request $request, Response $response) {
         return ($obj_a["id"] - $obj_b["id"]);
     });
 
-    if (!empty($diff)) {
+    /*if (!empty($diff)) {
         array_push($points1, $diff);
-    }
+    }*/
 
-    return $response->withJson($points1);
+    return $response->withJson($diff);
 });
 
 function compare_ids($obj_a, $obj_b) {
@@ -193,36 +193,6 @@ function compare_ids($obj_a, $obj_b) {
     return ($obj_a["id"] - $obj_b["id"]);
 }
 
-/*function array_diff_assoc_recursive($array1, $array2)
-{
-    foreach($array1 as $key => $value)
-    {
-        if(is_array($value))
-        {
-            if(!isset($array2[$key]))
-            {
-                $difference[$key] = $value;
-            }
-            elseif(!is_array($array2[$key]))
-            {
-                $difference[$key] = $value;
-            }
-            else
-            {
-                $new_diff = array_diff_assoc_recursive($value, $array2[$key]);
-                if($new_diff != FALSE)
-                {
-                    $difference[$key] = $new_diff;
-                }
-            }
-        }
-        elseif(!isset($array2[$key]) || $array2[$key] != $value)
-        {
-            $difference[$key] = $value;
-        }
-    }
-    return !isset($difference) ? 0 : $difference;
-}*/
 
 function array_diff_assoc_recursive($array1, $array2) {
     $difference=array();
@@ -283,9 +253,9 @@ $app->get('/nlp', function (Request $request, Response $response) {
     );*/
 
 
-    // ---------- Data ----------------
+    // ---------- Datos ----------------
 // data is taken from http://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection
-// we use a part for training
+// se para el entrenamiento
     $testing = array(
         array('Barato', 'Precios accesibles'),
         array('Barato', 'A muy buen precio'),
@@ -307,7 +277,7 @@ $app->get('/nlp', function (Request $request, Response $response) {
     );
 
 
-// and another for evaluating
+// para la evaluación
     $training = array(
         array('Muy caro', 'Caro y malo, el alambre tenía pura cebolla y se tardaron horas en atender.'),
         array('Moderado', 'Tiene buena comida, buena cantina y buen ambiente, con música de salterio. La atención es muy buena. El lugar es pulcro y agradable. Cuenta con terraza hacia la calle de Gante, que es peatonal. El precio no es bajo, pero es razonable.'),
@@ -329,38 +299,38 @@ $app->get('/nlp', function (Request $request, Response $response) {
         array('Caro', 'Muy bonito lugar. La comida muy buena pero un poco cara. El ambiente agradable')
     );
 
-    $tset = new TrainingSet(); // will hold the training documents
-    $tok = new WhitespaceTokenizer(); // will split into tokens
-    $ff = new DataAsFeatures(); // see features in documentation
+    $tset = new TrainingSet(); // contiene los docs para entrenar
+    $tok = new WhitespaceTokenizer(); // se separan en tokens
+    $ff = new DataAsFeatures(); // detalles en los documentos
 
-// ---------- Training ----------------
+// ---------- Entrenamiento  ----------------
     foreach ($training as $d) {
         $tset->addDocument(
             $d[0], // class
             new TokensDocument(
-                $tok->tokenize($d[1]) // The actual document
+                $tok->tokenize($d[1]) // el documento
             )
         );
     }
 
-    $model = new FeatureBasedNB(); // train a Naive Bayes model
+    $model = new FeatureBasedNB(); // entrenamiento usando el modelo Naive Bayes
     $model->train($ff, $tset);
 
 
-// ---------- Classification ----------------
+// ---------- Clasificación ----------------
     $cls = new MultinomialNBClassifier($ff, $model);
     $correct = 0;
     foreach ($testing as $d) {
-        // predict if it is spam or ham
+        // predice si es car, muy caro, moderado, barato
         $prediction = $cls->classify(
-            array('Caro', 'Muy Caro', 'Moderado', 'Barato'), // all possible classes
+            array('Caro', 'Muy Caro', 'Moderado', 'Barato'), // todas las posibles clases
             new TokensDocument(
-                $tok->tokenize($d[1]) // The document
+                $tok->tokenize($d[1]) // el documento
             )
         );
-        printf("precio %s\n ", $d[0]);
-        printf("comentario %s\n", $d[1]);
-        printf("!!!Prediccion %s\n", $prediction);
+        printf("precio %s", $d[0]);
+        printf("comentario %s\n\ ", $d[1]);
+        printf("!!!Prediccion %s\n\n", $prediction);
         if ($prediction == $d[0])
             $correct++;
     }
@@ -415,6 +385,7 @@ $app->post('/search', function (Request $request, Response $response) {
         $precio = $request_data['precio'];
         $distancia = $request_data['distancia'];
         $musica = $request_data['musica'];
+        $not_found_first = false;
 
         // echo '<pre>' . var_export($request->getParsedBody(), true) . '</pre>';
 
@@ -425,18 +396,29 @@ $app->post('/search', function (Request $request, Response $response) {
         // $distancia = Cerca
         // $musica = false
         $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084, true);
-        if ($result < 3) {
-            $no_encotnre_priemrea = true;
-            $tst->searchPlaces(...=);
+        $nuevo_precio = $tst->findNewPrice($precio);
+        while ($nuevo_precio != $precio && sizeof($result) < 3) {
+            $not_found_first = true;
+            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $distancia, $musica, 19.43422, -99.14084, true);
+            if (!empty($temp)) {
+                $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
+                if (!empty($diff)) $result = array_merge($result, $temp);
+            }
+            $nuevo_precio = $tst->findNewPrice($nuevo_precio);
         }
-        if ($result < 3) {
+        /*while ($result ) {
+
+        }*/
+        /*if ($result < 3) {
             $no_encotnre_percio = true;
-            $tst->searchPlaces(...=);
-        }
+            $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084, true);
+        }*/
+
+        echo '<pre>' . var_export(sizeof($result), true) . '</pre>';
 
         if ($result) {
             $response_data['error'] = false;
-            $response_data['sdfsd'] = $no_encotnre_priemrea;
+            $response_data['sdfsd'] = $not_found_first;
             $response_data['message'] = 'Actualización exitosa';
             $response_data['sitos'] = $result;
             // $response

@@ -344,18 +344,12 @@ class TstOperation
     }
 
     // echo '<pre>' . var_export($allPoints, true) . '</pre>';
-    function searchPlaces($id, $type, $price, $distance, $music, $lat_user, $long_user, $root = false, $cat_visited = null)
+    function searchPlaces($id, $selected_cat, $price, $distance, $music, $lat_user, $long_user, $root_cat = false, $visited_cat = null)
     {
-        $type_array = is_array($type) ? $type : (array)$type;
-        $message_not_found = false;
-        $parentCat = null;
-
-        $allPoints = array();
-
+        $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
+        $all_POI = array();
         foreach ($type_array as $cat) {
-
             $result = $this->searchPlace($price, $cat, $music);
-
             foreach ($result as $place) {
                 $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
                 if ($distance != $distanceFromPlace) continue;
@@ -391,86 +385,63 @@ class TstOperation
                 $comments = array_merge($temp_comments1, $temp_comments2);
                 $temp['comentarios'] = $comments;
 
-                array_push($allPoints, $temp);
+                array_push($all_POI, $temp);
             }
         }
 
-        if (sizeOf($allPoints) < 3) {
-            $cats = $this->searchChildCat($type);
-            if ($cat_visited) {
-                $pos = array_search($cat_visited, $cats);
-                unset($cats[$pos]);
+        if (sizeOf($all_POI) < 3) {
+            $children_cat = $this->searchChildCat($selected_cat);
+            if ($visited_cat) {
+                $pos = array_search($visited_cat, $children_cat);
+                unset($children_cat[$pos]);
             }
-            if (!empty($cats) && is_array($cats)) {
+            if (!empty($children_cat) && is_array($children_cat)) {
                 $a = array();
-                foreach ($cats as $cat) {
+                foreach ($children_cat as $cat) {
                     $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false);
                     if (!empty($temp)) $a = array_merge($a, $temp);
                 }
-                if (!empty($a) && !empty($allPoints)) {
-                    $diff = array_udiff($a, $allPoints, "self::compareArraysById");
-                    if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
-                } else if (!empty($allPoints)) {
-                    $allPoints = array_merge($allPoints, $a);
+                if (!empty($a) && !empty($all_POI)) {
+                    $diff = array_udiff($a, $all_POI, "self::compareArraysById");
+                    if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
+                } else if (!empty($a) && empty($all_POI)) {
+                    $all_POI = array_merge($all_POI, $a);
                 }
             }
         }
-        if (sizeof($allPoints) < 3 && $root) {
-            $parentCat = $this->searchParentCat($type);
-            if (!empty($parentCat) && is_array($parentCat)) {
+        if (sizeof($all_POI) < 3 && $root_cat) {
+            $parent_cat = $this->searchParentCat($selected_cat);
+            if (!empty($parent_cat) && is_array($parent_cat)) {
                 $b = array();
-                foreach ($parentCat as $cat) {
-                    $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false, $type);
+                foreach ($parent_cat as $cat) {
+                    $temp = $this->searchPlaces($id, $cat, $price, $distance, $music, $lat_user, $long_user, false, $selected_cat);
                     if (!empty($temp)) $b = array_merge($b, $temp);
                 }
-                if (!empty($b) && !empty($allPoints)) {
-                    $diff = array_udiff($b, $allPoints, "self::compareArraysById");
-                    if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
-                } /*else if (!empty($allPoints)) {
-                    $allPoints = array_merge($allPoints, $b);
-                }*/
+                if (!empty($b) && !empty($all_POI)) {
+                    $diff = array_udiff($b, $all_POI, "self::compareArraysById");
+                    if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
+                } else if (!empty($b) && empty($all_POI)) {
+                    $all_POI = array_merge($all_POI, $b);
+                }
             }
         }
 
-        if (sizeof($allPoints) < 3) {
-            $newPrice = $this->findNewPrice($price);
-            $superCat = $this->searchSuperCat($type);
-            if ($parentCat) {
-                $pos = array_search($parentCat, $superCat);
-                unset($superCat[$pos]);
-            }
-            if (!empty($superCat) && is_array($superCat)) {
-                $c = array();
-                foreach ($superCat as $cat) {
-                    $temp = $this->searchPlaces($id, $cat, $newPrice, $distance, $music, $lat_user, $long_user, false);
-                    if (!empty($temp)) $c = array_merge($c, $temp);
-                }
-                if (!empty($c) && !empty($allPoints)) {
-                    $diff = array_udiff($c, $allPoints, "self::compareArraysById");
-                    if (!empty($diff)) $allPoints = array_merge($allPoints, $diff);
-                } else if (!empty($allPoints)) {
-                    $allPoints = array_merge($allPoints, $c);
-                }
-            }
-
-        }
-
-        return $allPoints;
+        return $all_POI;
     }
 
-    function compareArraysById($obj_a, $obj_b)
+    public static function compareArraysById($obj_a, $obj_b)
     {
         return ($obj_a["id"] - $obj_b["id"]);
     }
 
-    function findNewPrice($price)
+    function findNewPrice($previousPrice)
     {
-        $clave = array_search($price, $this->priceArray);
-        $n = 4;
-        $r = ($clave - 1) % $n;
+        $pos = array_search($previousPrice, $this->priceArray);
+        $module = 4;
+        $r = ($pos - 1) % $module;
         if ($r < 0)
         {
-            $r += abs($n);
+            $r += abs($module);
         }
         return $this->priceArray[$r];
     }
