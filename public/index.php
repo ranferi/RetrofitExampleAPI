@@ -254,8 +254,7 @@ $app->get('/nlp', function (Request $request, Response $response) {
 
 
     // ---------- Datos ----------------
-// data is taken from http://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection
-// se para el entrenamiento
+    // para el entrenamiento
     $testing = array(
         array('Barato', 'Precios accesibles'),
         array('Barato', 'A muy buen precio'),
@@ -276,8 +275,7 @@ $app->get('/nlp', function (Request $request, Response $response) {
         array('Muy caro', 'Caro y malo')
     );
 
-
-// para la evaluación
+    // para la evaluación
     $training = array(
         array('Muy caro', 'Caro y malo, el alambre tenía pura cebolla y se tardaron horas en atender.'),
         array('Moderado', 'Tiene buena comida, buena cantina y buen ambiente, con música de salterio. La atención es muy buena. El lugar es pulcro y agradable. Cuenta con terraza hacia la calle de Gante, que es peatonal. El precio no es bajo, pero es razonable.'),
@@ -303,10 +301,10 @@ $app->get('/nlp', function (Request $request, Response $response) {
     $tok = new WhitespaceTokenizer(); // se separan en tokens
     $ff = new DataAsFeatures(); // detalles en los documentos
 
-// ---------- Entrenamiento  ----------------
+    // ---------- Entrenamiento  ----------------
     foreach ($training as $d) {
         $tset->addDocument(
-            $d[0], // class
+            $d[0], // clase
             new TokensDocument(
                 $tok->tokenize($d[1]) // el documento
             )
@@ -316,8 +314,7 @@ $app->get('/nlp', function (Request $request, Response $response) {
     $model = new FeatureBasedNB(); // entrenamiento usando el modelo Naive Bayes
     $model->train($ff, $tset);
 
-
-// ---------- Clasificación ----------------
+    // ---------- Clasificación ----------------
     $cls = new MultinomialNBClassifier($ff, $model);
     $correct = 0;
     foreach ($testing as $d) {
