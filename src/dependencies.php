@@ -1,5 +1,6 @@
 <?php
 // DIC configuration
+require_once '../includes/Data.php';
 
 $container = $app->getContainer();
 
@@ -17,3 +18,14 @@ $container['logger'] = function ($c) {
     $logger->pushHandler(new Monolog\Handler\StreamHandler($settings['path'], $settings['level']));
     return $logger;
 };
+
+$container['data'] = function ($c) {
+    return Data::get();
+};
+
+
+/*$container['classification'] = function ($c) {
+    $data = Data::get();
+    $data->classification();
+};*/
+

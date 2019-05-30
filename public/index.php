@@ -49,14 +49,10 @@ use NlpTools\Classifiers\MultinomialNBClassifier;
 require '../vendor/autoload.php';
 require_once '../includes/TstOperation.php';
 
-/**
- * Se configura la app para que muestre los errores
- */
-$app = new \Slim\App([
-    'settings' => [
-        'displayErrorDetails' => true
-    ]
-]);
+
+$settings = require __DIR__ . '/../src/settings.php';
+$app = new \Slim\App($settings);
+require __DIR__ . '/../src/dependencies.php';
 
 
 /**
@@ -272,12 +268,12 @@ $app->get('/nlp', function (Request $request, Response $response) {
         array('Caro', 'Precios algo caros'),
         array('Caro', 'Comida cara para la ración que sirven'),
         array('Caro', 'Precios excesivos'),
-        array('Muy caro', 'Caro y malo')
+        array('Muycaro', 'Caro y malo')
     );
 
     // para la evaluación
     $training = array(
-        array('Muy caro', 'Caro y malo, el alambre tenía pura cebolla y se tardaron horas en atender.'),
+        array('Muycaro', 'Caro y malo, el alambre tenía pura cebolla y se tardaron horas en atender.'),
         array('Moderado', 'Tiene buena comida, buena cantina y buen ambiente, con música de salterio. La atención es muy buena. El lugar es pulcro y agradable. Cuenta con terraza hacia la calle de Gante, que es peatonal. El precio no es bajo, pero es razonable.'),
         array('Caro', 'La comida es cara para la ración que sirven. No caigas en la tentación de pedir mojitos al 2x1, no están bien preparados, mejor elige las margaritas'),
         array('Barato', 'El lugar es de un ambiente muy pesado(peligroso) , la música es muy repetida, el lugar es pequeño y el alcohol es barato o poco diverso'),
@@ -285,7 +281,7 @@ $app->get('/nlp', function (Request $request, Response $response) {
         array('Caro', 'Muy buen lugar, los precios un poco elevados. También el lugar es pequeño y hay que esperar. El servicio está bien y tiene buen sabor.'),
         array('Moderado', 'Es un lugar pequeño pero muy acojedor, es bastante limpio y los que te atienden en ese lugar son bastante amables, la comida es muy rica y sus precios no son altos a pesar de que esta en la zona centro'),
         array('Moderado', 'Buen lugar,excelente vista,buena comida,precios no tan caros,pero sin preguntar ( cosa q ya no está permitida) te clavan la propina obligatoria! Y solo te venden vinos no muy buenos y en eso sí son muuuy caros! Todo lo demás es bueno,ojo estacionamiento cerca solo en bellas artes!"'),
-        array('Muy caro', 'Cierran a las 9pm pero cocina deja de funcionar a las 7:30pm, parece que te están corriendo antes de tiempo y no dejan disfrutar la vista, además de que los precios son excesivos.'),
+        array('Muycaro', 'Cierran a las 9pm pero cocina deja de funcionar a las 7:30pm, parece que te están corriendo antes de tiempo y no dejan disfrutar la vista, además de que los precios son excesivos.'),
         array('Barato', 'Recomiendo los chilaquiles en salsa de cacahuate, el servicio fue bueno. Tiene precios accesibles'),
         array('Caro', 'O ya mejore mi paladar o decayo el sabor de este menu, siempre me gusto, desde la primera vez pero ahora si le veo varias fallas, te llenas pero le falta sabor a su comida, donde se fue? si subio el precio'),
         array('Barato', 'Muy buen menú y precios accesibles! Definitivamente volvería!'),
@@ -318,9 +314,9 @@ $app->get('/nlp', function (Request $request, Response $response) {
     $cls = new MultinomialNBClassifier($ff, $model);
     $correct = 0;
     foreach ($testing as $d) {
-        // predice si es car, muy caro, moderado, barato
+        // predice si es caro, muy caro, moderado, barato
         $prediction = $cls->classify(
-            array('Caro', 'Muy Caro', 'Moderado', 'Barato'), // todas las posibles clases
+            array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
             new TokensDocument(
                 $tok->tokenize($d[1]) // el documento
             )
@@ -376,6 +372,8 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
 $app->post('/search', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('id', 'tipo', 'precio', 'distancia'));
     if (!$params["error"]) {
+        $sasda = $this->get("logger");
+        $data = $this->get("data");
         $request_data = $request->getParsedBody();
         $id = $request_data['id'];
         $tipo = $request_data['tipo'];
@@ -394,8 +392,21 @@ $app->post('/search', function (Request $request, Response $response) {
         // $musica = false
         $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084, true);
         $nuevo_precio = $tst->findNewPrice($precio);
-        while ($nuevo_precio != $precio && sizeof($result) < 3) {
+        $correct = 0;
+        $temp = array();
+        foreach ($result as $place) {
+            $comments = $place['comentarios'];
+            foreach ($comments as $comment) {
+                $prediction = $data->classification($comment);
+                if ($prediction == str_replace("su:", "", $precio)) $correct++;
+            }
+            $percent = 100 * $correct / sizeof($result);
+            if ($percent > 60) array_push($temp, $place);
+        }
+        if ($temp < 3) {
             $not_found_first = true;
+        }
+        while ($nuevo_precio != $precio && (sizeof($result) < 3 || sizeof($temp) < 3)) {
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $distancia, $musica, 19.43422, -99.14084, true);
             if (!empty($temp)) {
                 $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
@@ -411,7 +422,7 @@ $app->post('/search', function (Request $request, Response $response) {
             $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084, true);
         }*/
 
-        echo '<pre>' . var_export(sizeof($result), true) . '</pre>';
+        #echo '<pre>' . var_export(sizeof($result), true) . '</pre>';
 
         if ($result) {
             $response_data['error'] = false;
@@ -425,7 +436,7 @@ $app->post('/search', function (Request $request, Response $response) {
             $response_data['message'] = 'No se actualizó';
         }
 
-        return $response->withJson($response_data);
+        return $response->withJson(null);
     } else {
         return $response->withJson($params);
     }
