@@ -344,15 +344,17 @@ class TstOperation
     }
 
     // echo '<pre>' . var_export($allPoints, true) . '</pre>';
-    function searchPlaces($id, $selected_cat, $price, $distance, $music, $lat_user, $long_user, $root_cat = false, $visited_cat = null)
+    function searchPlaces($id, $selected_cat, $price, $distance = null, $music, $lat_user, $long_user, $root_cat = false, $visited_cat = null)
     {
         $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
         $all_POI = array();
         foreach ($type_array as $cat) {
             $result = $this->searchPlace($price, $cat, $music);
             foreach ($result as $place) {
-                $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
-                if ($distance != $distanceFromPlace) continue;
+                if ($distance != null) {
+                    $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
+                    if ($distance != $distanceFromPlace) continue;
+                }
 
                 $sujeto = $place->sujeto->shorten();
                 $temp_id = $place->id->getValue();

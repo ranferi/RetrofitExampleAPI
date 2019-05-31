@@ -91,7 +91,6 @@ $app->post('/register', function (Request $request, Response $response) {
     } else {
         return $response->withJson($params);
     }
-
 });
 
 /***
@@ -372,7 +371,6 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
 $app->post('/search', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('id', 'tipo', 'precio', 'distancia'));
     if (!$params["error"]) {
-        $sasda = $this->get("logger");
         $data = $this->get("data");
         $request_data = $request->getParsedBody();
         $id = $request_data['id'];
@@ -381,8 +379,6 @@ $app->post('/search', function (Request $request, Response $response) {
         $distancia = $request_data['distancia'];
         $musica = $request_data['musica'];
         $not_found_first = false;
-
-        // echo '<pre>' . var_export($request->getParsedBody(), true) . '</pre>';
 
         $tst = new TstOperation();
         $response_data = array();
@@ -403,10 +399,11 @@ $app->post('/search', function (Request $request, Response $response) {
             $percent = 100 * $correct / sizeof($result);
             if ($percent > 60) array_push($temp, $place);
         }
-        if ($temp < 3) {
+
+        $result = (sizeof($temp) >= 2)  ? $temp : $result;
+
+        while ($nuevo_precio != $precio && (sizeof($result) < 3)) {
             $not_found_first = true;
-        }
-        while ($nuevo_precio != $precio && (sizeof($result) < 3 || sizeof($temp) < 3)) {
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $distancia, $musica, 19.43422, -99.14084, true);
             if (!empty($temp)) {
                 $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
@@ -414,20 +411,31 @@ $app->post('/search', function (Request $request, Response $response) {
             }
             $nuevo_precio = $tst->findNewPrice($nuevo_precio);
         }
-        /*while ($result ) {
 
-        }*/
-        /*if ($result < 3) {
-            $no_encotnre_percio = true;
-            $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084, true);
-        }*/
+        while (sizeof($result) < 3) {
+            $not_found_price = true;
+            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $distancia, !$musica, 19.43422, -99.14084, true);
+            if (!empty($temp)) {
+                $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
+                if (!empty($diff)) $result = array_merge($result, $temp);
+            }
+        }
 
-        #echo '<pre>' . var_export(sizeof($result), true) . '</pre>';
+        while (sizeof($result) < 3) {
+            $not_found_music = true;
+            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, null, $musica, 19.43422, -99.14084, true);
+            if (!empty($temp)) {
+                $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
+                if (!empty($diff)) $result = array_merge($result, $temp);
+            }
+        }
 
         if ($result) {
             $response_data['error'] = false;
-            $response_data['sdfsd'] = $not_found_first;
-            $response_data['message'] = 'Actualización exitosa';
+            $response_data['first'] = $not_found_first;
+            $response_data['price'] = $not_found_price;
+            $response_data['music'] = $not_found_music;
+            $response_data['message'] = 'busqueda exitosa';
             $response_data['sitos'] = $result;
             // $response
             // $response_data['user'] = $tst->getUserByEmail($email);
@@ -436,7 +444,7 @@ $app->post('/search', function (Request $request, Response $response) {
             $response_data['message'] = 'No se actualizó';
         }
 
-        return $response->withJson(null);
+        return $response->withJson($result);
     } else {
         return $response->withJson($params);
     }
