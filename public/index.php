@@ -54,6 +54,13 @@ $settings = require __DIR__ . '/../src/settings.php';
 $app = new \Slim\App($settings);
 require __DIR__ . '/../src/dependencies.php';
 
+$mw = (function (Request $request, Response $response, callable $next) {
+    $response = $next($request, $response);
+    $data = $this->get("data");
+    $body = json_decode($response->getBody()->__toString());
+    $data->add($body["comment"]);
+    return $response;
+});
 
 /**
  * Registra un nuevo usuario
@@ -207,132 +214,6 @@ function array_diff_assoc_recursive($array1, $array2) {
     return !isset($difference) ? 0 : $difference;
 }
 
-/**
- * Se obtienen todos lo usuarios
- */
-$app->get('/nlp', function (Request $request, Response $response) {
-    /*$s1 = "La comida no está tan buena, abusan de la grasa. No es malo el lugar pero por los precios podrías esperar más.
-";
-    $s2 = "por los precios podrías esperar más";
-
-    $tok = new WhitespaceTokenizer();
-    $J = new JaccardIndex();
-    $cos = new CosineSimilarity();
-    $simhash = new Simhash(16); // 16 bits hash
-
-    $setA = $tok->tokenize($s1);
-    $setB = $tok->tokenize($s2);
-
-    printf (
-        "
-    Jaccard:  %.3f
-    Cosine:   %.3f
-    Simhash:  %.3f
-    SimhashA: %s
-    SimhashB: %s
-    ",
-        $J->similarity(
-            $setA,
-            $setB
-        ),
-        $cos->similarity(
-            $setA,
-            $setB
-        ),
-        $simhash->similarity(
-            $setA,
-            $setB
-        ),
-        $simhash->simhash($setA),
-        $simhash->simhash($setB)
-    );*/
-
-
-    // ---------- Datos ----------------
-    // para el entrenamiento
-    $testing = array(
-        array('Barato', 'Precios accesibles'),
-        array('Barato', 'A muy buen precio'),
-        array('Moderado', 'A buen precio'),
-        array('Moderado', 'Buena relación precio-costo'),
-        array('Moderado', 'Precios no tan caros'),
-        array('Moderado', 'Precio muy bueno'),
-        array('Moderado', 'Los precios son justos para la calidad'),
-        array('Moderado', 'Precio bueno a pesar de'),
-        array('Moderado', 'Precio bueno para ser'),
-        array('Caro', 'por los precios podrías esperar más'),
-        array('Caro', 'Un poco caro'),
-        array('Caro', 'Precios un poco elevados'),
-        array('Caro', 'En general caro'),
-        array('Caro', 'Precios algo caros'),
-        array('Caro', 'Comida cara para la ración que sirven'),
-        array('Caro', 'Precios excesivos'),
-        array('Muycaro', 'Caro y malo')
-    );
-
-    // para la evaluación
-    $training = array(
-        array('Muycaro', 'Caro y malo, el alambre tenía pura cebolla y se tardaron horas en atender.'),
-        array('Moderado', 'Tiene buena comida, buena cantina y buen ambiente, con música de salterio. La atención es muy buena. El lugar es pulcro y agradable. Cuenta con terraza hacia la calle de Gante, que es peatonal. El precio no es bajo, pero es razonable.'),
-        array('Caro', 'La comida es cara para la ración que sirven. No caigas en la tentación de pedir mojitos al 2x1, no están bien preparados, mejor elige las margaritas'),
-        array('Barato', 'El lugar es de un ambiente muy pesado(peligroso) , la música es muy repetida, el lugar es pequeño y el alcohol es barato o poco diverso'),
-        array('Moderado', 'Una excelente opción dentro del primer cuadro del centro histórico. Buena relación precio-calidad. Es un poco pequeño el lugar y usualmente hay que hacer fila de espera para tener lugar, pero vale la pena.'),
-        array('Caro', 'Muy buen lugar, los precios un poco elevados. También el lugar es pequeño y hay que esperar. El servicio está bien y tiene buen sabor.'),
-        array('Moderado', 'Es un lugar pequeño pero muy acojedor, es bastante limpio y los que te atienden en ese lugar son bastante amables, la comida es muy rica y sus precios no son altos a pesar de que esta en la zona centro'),
-        array('Moderado', 'Buen lugar,excelente vista,buena comida,precios no tan caros,pero sin preguntar ( cosa q ya no está permitida) te clavan la propina obligatoria! Y solo te venden vinos no muy buenos y en eso sí son muuuy caros! Todo lo demás es bueno,ojo estacionamiento cerca solo en bellas artes!"'),
-        array('Muycaro', 'Cierran a las 9pm pero cocina deja de funcionar a las 7:30pm, parece que te están corriendo antes de tiempo y no dejan disfrutar la vista, además de que los precios son excesivos.'),
-        array('Barato', 'Recomiendo los chilaquiles en salsa de cacahuate, el servicio fue bueno. Tiene precios accesibles'),
-        array('Caro', 'O ya mejore mi paladar o decayo el sabor de este menu, siempre me gusto, desde la primera vez pero ahora si le veo varias fallas, te llenas pero le falta sabor a su comida, donde se fue? si subio el precio'),
-        array('Barato', 'Muy buen menú y precios accesibles! Definitivamente volvería!'),
-        array('Caro', 'Un lugar típico para comer algunas especialidades, un poco caro'),
-        array('Caro', 'Buen lugar para departir un rato en compañía de los amigos o de la familia, el tratado de los meseros es bueno, los precios algo caros, ambiente familiar, lo recomiendo'),
-        array('Caro', 'La comida no está tan buena, abusan de la grasa. No es malo el lugar pero por los precios podrías esperar más.'),
-        array('Moderado', 'Excelente comida, los postres deliciosos y el café con cardamomo delicioso vale la pena probarlo, el precio es bueno para ser comida \nárabe. El espacio es tranquilo a pesar de estar en medio del centro y la atención es muy buena'),
-        array('Moderado', 'Una gran experiencia!\nUna mezcla de gran atención, platillos diversos con opciones vegetarianas, limpieza en alimentos y en el establecimiento en general. Y los precios son justos para la calidad de los mismos. De mis lugares favoritos. Solo hay que perderle el miedo a la zona que no es del todo bonita por el comercio'),
-        array('Caro', 'Muy bonito lugar. La comida muy buena pero un poco cara. El ambiente agradable')
-    );
-
-    $tset = new TrainingSet(); // contiene los docs para entrenar
-    $tok = new WhitespaceTokenizer(); // se separan en tokens
-    $ff = new DataAsFeatures(); // detalles en los documentos
-
-    // ---------- Entrenamiento  ----------------
-    foreach ($training as $d) {
-        $tset->addDocument(
-            $d[0], // clase
-            new TokensDocument(
-                $tok->tokenize($d[1]) // el documento
-            )
-        );
-    }
-
-    $model = new FeatureBasedNB(); // entrenamiento usando el modelo Naive Bayes
-    $model->train($ff, $tset);
-
-    // ---------- Clasificación ----------------
-    $cls = new MultinomialNBClassifier($ff, $model);
-    $correct = 0;
-    foreach ($testing as $d) {
-        // predice si es caro, muy caro, moderado, barato
-        $prediction = $cls->classify(
-            array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
-            new TokensDocument(
-                $tok->tokenize($d[1]) // el documento
-            )
-        );
-        printf("precio %s", $d[0]);
-        printf("comentario %s\n\ ", $d[1]);
-        printf("!!!Prediccion %s\n\n", $prediction);
-        if ($prediction == $d[0])
-            $correct++;
-    }
-
-    printf("Accuracy: %.2f\n", 100 * $correct / count($testing));
-
-
-    // echo '<pre>' . var_export($tok->tokenize($text), true) . '</pre>';
-    return true;
-});
 
 /**
  * Se actualiza la información de un usuario
@@ -489,9 +370,13 @@ $app->post('/opinion/{id}', function (Request $request, Response $response) {
         $tst = new TstOperation();
         $response_data = array();
 
-        if ($tst->insertUserRatingSite($id, $id_place, $liked, $price, $comment)) {
+        $c = array(0 => $price, 1 => $comment);
+
+        //if ($tst->insertUserRatingSite($id, $id_place, $liked, $price, $comment)) {
+        if (true) {
             $response_data['error'] = false;
             $response_data['message'] = 'Se envió tu opinión. ¡Gracias!';
+            $response_data['comment'] = $c;
             // echo '<pre>' . var_export($response_data, true) . '</pre>';
         } else {
             $response_data['error'] = true;
@@ -502,7 +387,132 @@ $app->post('/opinion/{id}', function (Request $request, Response $response) {
     } else {
         return $response->withJson($params);
     }
+})->add($mw);
+
+$app->get('/nlp', function (Request $request, Response $response) {
+    /*$s1 = "La comida no está tan buena, abusan de la grasa. No es malo el lugar pero por los precios podrías esperar más.
+";
+    $s2 = "por los precios podrías esperar más";
+
+    $tok = new WhitespaceTokenizer();
+    $J = new JaccardIndex();
+    $cos = new CosineSimilarity();
+    $simhash = new Simhash(16); // 16 bits hash
+
+    $setA = $tok->tokenize($s1);
+    $setB = $tok->tokenize($s2);
+
+    printf (
+        "
+    Jaccard:  %.3f
+    Cosine:   %.3f
+    Simhash:  %.3f
+    SimhashA: %s
+    SimhashB: %s
+    ",
+        $J->similarity(
+            $setA,
+            $setB
+        ),
+        $cos->similarity(
+            $setA,
+            $setB
+        ),
+        $simhash->similarity(
+            $setA,
+            $setB
+        ),
+        $simhash->simhash($setA),
+        $simhash->simhash($setB)
+    );*/
+
+
+    // ---------- Datos ----------------
+    // para el entrenamiento
+    $testing = array(
+        array('Barato', 'Precios accesibles'),
+        array('Barato', 'A muy buen precio'),
+        array('Moderado', 'A buen precio'),
+        array('Moderado', 'Buena relación precio-costo'),
+        array('Moderado', 'Precios no tan caros'),
+        array('Moderado', 'Precio muy bueno'),
+        array('Moderado', 'Los precios son justos para la calidad'),
+        array('Moderado', 'Precio bueno a pesar de'),
+        array('Moderado', 'Precio bueno para ser'),
+        array('Caro', 'por los precios podrías esperar más'),
+        array('Caro', 'Un poco caro'),
+        array('Caro', 'Precios un poco elevados'),
+        array('Caro', 'En general caro'),
+        array('Caro', 'Precios algo caros'),
+        array('Caro', 'Comida cara para la ración que sirven'),
+        array('Caro', 'Precios excesivos'),
+        array('Muycaro', 'Caro y malo')
+    );
+
+    // para la evaluación
+    $training = array(
+        array('Muycaro', 'Caro y malo, el alambre tenía pura cebolla y se tardaron horas en atender.'),
+        array('Moderado', 'Tiene buena comida, buena cantina y buen ambiente, con música de salterio. La atención es muy buena. El lugar es pulcro y agradable. Cuenta con terraza hacia la calle de Gante, que es peatonal. El precio no es bajo, pero es razonable.'),
+        array('Caro', 'La comida es cara para la ración que sirven. No caigas en la tentación de pedir mojitos al 2x1, no están bien preparados, mejor elige las margaritas'),
+        array('Barato', 'El lugar es de un ambiente muy pesado(peligroso) , la música es muy repetida, el lugar es pequeño y el alcohol es barato o poco diverso'),
+        array('Moderado', 'Una excelente opción dentro del primer cuadro del centro histórico. Buena relación precio-calidad. Es un poco pequeño el lugar y usualmente hay que hacer fila de espera para tener lugar, pero vale la pena.'),
+        array('Caro', 'Muy buen lugar, los precios un poco elevados. También el lugar es pequeño y hay que esperar. El servicio está bien y tiene buen sabor.'),
+        array('Moderado', 'Es un lugar pequeño pero muy acojedor, es bastante limpio y los que te atienden en ese lugar son bastante amables, la comida es muy rica y sus precios no son altos a pesar de que esta en la zona centro'),
+        array('Moderado', 'Buen lugar,excelente vista,buena comida,precios no tan caros,pero sin preguntar ( cosa q ya no está permitida) te clavan la propina obligatoria! Y solo te venden vinos no muy buenos y en eso sí son muuuy caros! Todo lo demás es bueno,ojo estacionamiento cerca solo en bellas artes!"'),
+        array('Muycaro', 'Cierran a las 9pm pero cocina deja de funcionar a las 7:30pm, parece que te están corriendo antes de tiempo y no dejan disfrutar la vista, además de que los precios son excesivos.'),
+        array('Barato', 'Recomiendo los chilaquiles en salsa de cacahuate, el servicio fue bueno. Tiene precios accesibles'),
+        array('Caro', 'O ya mejore mi paladar o decayo el sabor de este menu, siempre me gusto, desde la primera vez pero ahora si le veo varias fallas, te llenas pero le falta sabor a su comida, donde se fue? si subio el precio'),
+        array('Barato', 'Muy buen menú y precios accesibles! Definitivamente volvería!'),
+        array('Caro', 'Un lugar típico para comer algunas especialidades, un poco caro'),
+        array('Caro', 'Buen lugar para departir un rato en compañía de los amigos o de la familia, el tratado de los meseros es bueno, los precios algo caros, ambiente familiar, lo recomiendo'),
+        array('Caro', 'La comida no está tan buena, abusan de la grasa. No es malo el lugar pero por los precios podrías esperar más.'),
+        array('Moderado', 'Excelente comida, los postres deliciosos y el café con cardamomo delicioso vale la pena probarlo, el precio es bueno para ser comida \nárabe. El espacio es tranquilo a pesar de estar en medio del centro y la atención es muy buena'),
+        array('Moderado', 'Una gran experiencia!\nUna mezcla de gran atención, platillos diversos con opciones vegetarianas, limpieza en alimentos y en el establecimiento en general. Y los precios son justos para la calidad de los mismos. De mis lugares favoritos. Solo hay que perderle el miedo a la zona que no es del todo bonita por el comercio'),
+        array('Caro', 'Muy bonito lugar. La comida muy buena pero un poco cara. El ambiente agradable')
+    );
+
+    $tset = new TrainingSet(); // contiene los docs para entrenar
+    $tok = new WhitespaceTokenizer(); // se separan en tokens
+    $ff = new DataAsFeatures(); // detalles en los documentos
+
+    // ---------- Entrenamiento  ----------------
+    foreach ($training as $d) {
+        $tset->addDocument(
+            $d[0], // clase
+            new TokensDocument(
+                $tok->tokenize($d[1]) // el documento
+            )
+        );
+    }
+
+    $model = new FeatureBasedNB(); // entrenamiento usando el modelo Naive Bayes
+    $model->train($ff, $tset);
+
+    // ---------- Clasificación ----------------
+    $cls = new MultinomialNBClassifier($ff, $model);
+    $correct = 0;
+    foreach ($testing as $d) {
+        // predice si es caro, muy caro, moderado, barato
+        $prediction = $cls->classify(
+            array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
+            new TokensDocument(
+                $tok->tokenize($d[1]) // el documento
+            )
+        );
+        printf("precio %s", $d[0]);
+        printf("comentario %s\n\ ", $d[1]);
+        printf("!!!Prediccion %s\n\n", $prediction);
+        if ($prediction == $d[0])
+            $correct++;
+    }
+
+    printf("Accuracy: %.2f\n", 100 * $correct / count($testing));
+
+
+    // echo '<pre>' . var_export($tok->tokenize($text), true) . '</pre>';
+    return true;
 });
+
 
 /**
  * Checa que los parámetros no estén vacíos
