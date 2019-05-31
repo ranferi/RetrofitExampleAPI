@@ -375,7 +375,8 @@ $app->post('/search', function (Request $request, Response $response) {
         $request_data = $request->getParsedBody();
         $id = $request_data['id'];
         $tipo = $request_data['tipo'];
-        $precio = $request_data['precio'];
+        $temp_precio = $request_data['precio'];
+        $precio = "su:" . $data->classification($temp_precio);
         $distancia = $request_data['distancia'];
         $musica = $request_data['musica'];
         $not_found_first = false;
@@ -429,6 +430,8 @@ $app->post('/search', function (Request $request, Response $response) {
                 if (!empty($diff)) $result = array_merge($result, $temp);
             }
         }
+
+        /*while (sizeof($result) > 4 && sizeof($result) < 7) {} */
 
         if ($result) {
             $response_data['error'] = false;

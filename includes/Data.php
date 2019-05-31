@@ -58,18 +58,16 @@ class Data
 
 
     public function classification($comment) {
-        foreach ($comment as $d) {
             // predice si es caro, muy caro, moderado, barato
             $prediction = $this->cls->classify(
                 array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
                 new TokensDocument(
-                    $this->tok->tokenize($d[1]) // el documento
+                    $this->tok->tokenize($comment) // el documento
                 )
             );
             return $prediction;
             /*if ($prediction == $d[0])
                 $this->add($comment);*/
-        }
     }
 
     private function training($training) {
@@ -83,5 +81,10 @@ class Data
         }
         // entrenamiento usando el modelo Naive Bayes
         $this->model->train($this->ff, $this->tset);
+    }
+
+    public function add($comment) {
+        array_push($this->training_data, $comment);
+        $this->training($this->training_data);
     }
 }
