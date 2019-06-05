@@ -58,7 +58,8 @@ $mw = (function (Request $request, Response $response, callable $next) {
     $response = $next($request, $response);
     $data = $this->get("data");
     $body = json_decode($response->getBody()->__toString());
-    $data->add($body["comment"]);
+    // echo '<pre>' . var_export($body, true) . '</pre>';
+    $data->add($body->comment);
     return $response;
 });
 
@@ -268,7 +269,7 @@ $app->post('/search', function (Request $request, Response $response) {
         // $precio = su:Moderado => su:Barato
         // $distancia = Cerca
         // $musica = false
-        $result = $tst->searchPlaces($id, $tipo, $precio, $distancia, $musica, 19.43422, -99.14084, true);
+        $result = $tst->searchPlaces($id, $tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia);
         $nuevo_precio = $tst->findNewPrice($precio);
         $correct = 0;
         $temp = array();
@@ -286,7 +287,7 @@ $app->post('/search', function (Request $request, Response $response) {
 
         while ($nuevo_precio != $precio && (sizeof($result) < 3)) {
             $not_found_first = true;
-            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $distancia, $musica, 19.43422, -99.14084, true);
+            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia);
             if (!empty($temp)) {
                 $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
                 if (!empty($diff)) $result = array_merge($result, $temp);
@@ -296,7 +297,7 @@ $app->post('/search', function (Request $request, Response $response) {
 
         while (sizeof($result) < 3) {
             $not_found_price = true;
-            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $distancia, !$musica, 19.43422, -99.14084, true);
+            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);
             if (!empty($temp)) {
                 $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
                 if (!empty($diff)) $result = array_merge($result, $temp);
@@ -305,7 +306,7 @@ $app->post('/search', function (Request $request, Response $response) {
 
         while (sizeof($result) < 3) {
             $not_found_music = true;
-            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, null, $musica, 19.43422, -99.14084, true);
+            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null);
             if (!empty($temp)) {
                 $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
                 if (!empty($diff)) $result = array_merge($result, $temp);
