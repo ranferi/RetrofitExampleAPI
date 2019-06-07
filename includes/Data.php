@@ -62,7 +62,7 @@ class Data
             $prediction = $this->cls->classify(
                 array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
                 new TokensDocument(
-                    $this->tok->tokenize($comment) // el documento
+                    $this->tok->tokenize($comment['comentario']) // el documento
                 )
             );
             return $prediction;

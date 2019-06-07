@@ -256,11 +256,13 @@ $app->post('/search', function (Request $request, Response $response) {
         $data = $this->get("data");
         $request_data = $request->getParsedBody();
         $id = $request_data['id'];
-        $tipo = $request_data['tipo'];
+        $tipo = "su:" . $request_data['tipo'];
         $temp_precio = $request_data['precio'];
         $precio = "su:" . $data->classification($temp_precio);
+
         $distancia = $request_data['distancia'];
-        $musica = $request_data['musica'];
+        $musica = $request_data['musica'] === 'true' ? true: false;;
+
         $not_found_first = false;
 
         $tst = new TstOperation();
@@ -276,6 +278,7 @@ $app->post('/search', function (Request $request, Response $response) {
         foreach ($result as $place) {
             $comments = $place['comentarios'];
             foreach ($comments as $comment) {
+                // echo '<pre>' . var_export($comment['comentario'], true) . '</pre>';
                 $prediction = $data->classification($comment);
                 if ($prediction == str_replace("su:", "", $precio)) $correct++;
             }
@@ -295,16 +298,17 @@ $app->post('/search', function (Request $request, Response $response) {
             $nuevo_precio = $tst->findNewPrice($nuevo_precio);
         }
 
-        while (sizeof($result) < 3) {
+        if (sizeof($result) < 3) {
             $not_found_price = true;
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);
+            echo '<pre>' . var_export(gettype($musica), true) . '</pre>';
             if (!empty($temp)) {
                 $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
                 if (!empty($diff)) $result = array_merge($result, $temp);
             }
         }
 
-        while (sizeof($result) < 3) {
+        if (sizeof($result) < 3) {
             $not_found_music = true;
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null);
             if (!empty($temp)) {
@@ -313,13 +317,21 @@ $app->post('/search', function (Request $request, Response $response) {
             }
         }
 
-        /*while (sizeof($result) > 4 && sizeof($result) < 7) {} */
+
+        while ($nuevo_precio != $precio && sizeof($result) > 4 && sizeof($result) < 7) {
+            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);
+            if (!empty($temp)) {
+                $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
+                if (!empty($diff)) $result = array_merge($result, $temp);
+            }
+            $nuevo_precio = $tst->findNewPrice($nuevo_precio);
+        }
 
         if ($result) {
             $response_data['error'] = false;
-            $response_data['first'] = $not_found_first;
-            $response_data['price'] = $not_found_price;
-            $response_data['music'] = $not_found_music;
+            //$response_data['first'] = $not_found_first;
+            //$response_data['price'] = $not_found_price;
+            //$response_data['music'] = $not_found_music;
             $response_data['message'] = 'busqueda exitosa';
             $response_data['sitos'] = $result;
             // $response
@@ -432,14 +444,15 @@ $app->get('/nlp', function (Request $request, Response $response) {
     // para el entrenamiento
     $testing = array(
         array('Barato', 'Precios accesibles'),
-        array('Barato', 'A muy buen precio'),
-        array('Moderado', 'A buen precio'),
+        array('Barato', 'Un muy buen precio'),
+        array('Moderado', 'Un buen precio'),
         array('Moderado', 'Buena relación precio-costo'),
         array('Moderado', 'Precios no tan caros'),
         array('Moderado', 'Precio muy bueno'),
         array('Moderado', 'Los precios son justos para la calidad'),
         array('Moderado', 'Precio bueno a pesar de'),
         array('Moderado', 'Precio bueno para ser'),
+        array('Moderado', 'Los precios justos para la calidad'),
         array('Caro', 'por los precios podrías esperar más'),
         array('Caro', 'Un poco caro'),
         array('Caro', 'Precios un poco elevados'),

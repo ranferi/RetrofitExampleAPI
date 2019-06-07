@@ -393,14 +393,16 @@ class TstOperation
 
         if (sizeOf($all_POI) < 3) {
             $children_cat = $this->searchChildCat($selected_cat);
+
             if ($visited_cat) {
                 $pos = array_search($visited_cat, $children_cat);
                 unset($children_cat[$pos]);
+
             }
             if (!empty($children_cat) && is_array($children_cat)) {
                 $a = array();
                 foreach ($children_cat as $cat) {
-                    $temp = $this->searchPlaces($id, $cat, $price, $music, $lat_user, $long_user, false, $distance);
+                    $temp = $this->searchPlaces($id, $cat, $price, $music, $lat_user, $long_user, false, null, $distance);
                     if (!empty($temp)) $a = array_merge($a, $temp);
                 }
                 if (!empty($a) && !empty($all_POI)) {
@@ -515,7 +517,11 @@ class TstOperation
 
         $array = array();
         foreach ($result as $cat) {
-            if (isset($cat->sub) && $cat != null) array_push($array, $cat->sub->shorten());
+
+            if (isset($cat->sub) && $cat != null)  {
+
+                array_push($array, $cat->sub->shorten());
+            }
         }
         return $array;
     }
@@ -529,7 +535,7 @@ class TstOperation
     function searchPlace($price, $type, $music)
     {
         $result = $this->endpoint->query("
-        SELECT DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
+        select DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
         WHERE {
             ?sujeto su:idSitio ?id .
             ?sujeto a [
@@ -544,7 +550,7 @@ class TstOperation
             ] .
             ?sujeto su:tienePropiedad/su:categoria/a " . $type ." .
             ?sujeto su:tienePropiedad/su:direccionSitio ?dir .
-            ?sujeto su:tienePropiedad/su:musica " . $music . " .
+            ?sujeto su:tienePropiedad/su:musica " . ($music ? 'true' : 'false')  . " .
             ?sujeto su:tienePropiedad/su:latitud ?latitud .
             ?sujeto su:tienePropiedad/su:longitud ?longitud .
         }"
