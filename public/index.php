@@ -333,12 +333,12 @@ $app->post('/search', function (Request $request, Response $response) {
             //$response_data['price'] = $not_found_price;
             //$response_data['music'] = $not_found_music;
             $response_data['message'] = 'busqueda exitosa';
-            $response_data['sitos'] = $result;
+            $response_data['places'] = $result;
             // $response
             // $response_data['user'] = $tst->getUserByEmail($email);
         } else {
             $response_data['error'] = true;
-            $response_data['message'] = 'No se actualizó';
+            $response_data['message'] = 'Ocurrió un error, intenta de nuevo!';
         }
 
         return $response->withJson($result);
@@ -366,8 +366,8 @@ $app->get('/visited/{id}', function (Request $request, Response $response) {
     }*/
 
 //    return $response->withJson($response_data);
-    $places = $tst->getAllVisitedPlacesByUser($id);
-    return $response->withJson(array("users" => $places));
+    $users = $tst->getAllVisitedPlacesByUser($id);
+    return $response->withJson(array("users" => $users));
 });
 
 $app->post('/opinion/{id}', function (Request $request, Response $response) {

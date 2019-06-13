@@ -393,11 +393,9 @@ class TstOperation
 
         if (sizeOf($all_POI) < 3) {
             $children_cat = $this->searchChildCat($selected_cat);
-
             if ($visited_cat) {
                 $pos = array_search($visited_cat, $children_cat);
                 unset($children_cat[$pos]);
-
             }
             if (!empty($children_cat) && is_array($children_cat)) {
                 $a = array();
