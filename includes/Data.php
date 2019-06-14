@@ -59,15 +59,18 @@ class Data
 
     public function classification($comment) {
             // predice si es caro, muy caro, moderado, barato
+        if (isset($comment['comentario'])) {
             $prediction = $this->cls->classify(
                 array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
                 new TokensDocument(
                     $this->tok->tokenize($comment['comentario']) // el documento
                 )
             );
-            return $prediction;
-            /*if ($prediction == $d[0])
-                $this->add($comment);*/
+        } else {
+            $prediction = 'Barato';
+        }
+
+        return $prediction;
     }
 
     private function training($training) {

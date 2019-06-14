@@ -318,7 +318,7 @@ $app->post('/search', function (Request $request, Response $response) {
         }
 
 
-        while ($nuevo_precio != $precio && sizeof($result) > 4 && sizeof($result) < 7) {
+        while ($nuevo_precio != $precio || (sizeof($result) > 4 && sizeof($result) < 7)) {
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);
             if (!empty($temp)) {
                 $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
@@ -341,7 +341,7 @@ $app->post('/search', function (Request $request, Response $response) {
             $response_data['message'] = 'Ocurrió un error, intenta de nuevo!';
         }
 
-        return $response->withJson($result);
+        return $response->withJson($response_data);
     } else {
         return $response->withJson($params);
     }
