@@ -249,36 +249,36 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
     }
 });
 
-
+/***
+ * Ruta (con petición POST) "search", que ayuda a buscar los sitios llamando al script de
+ * operaciones en la triplestore (TstOperation) y filtra los resultados.
+ */
 $app->post('/search', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('id', 'tipo', 'precio', 'distancia'));
     if (!$params["error"]) {
         $data = $this->get("data");
         $request_data = $request->getParsedBody();
+
         $id = $request_data['id'];
         $tipo = "su:" . $request_data['tipo'];
         $temp_precio = $request_data['precio'];
         $precio = "su:" . $data->classification($temp_precio);
-
         $distancia = $request_data['distancia'];
-        $musica = $request_data['musica'] === 'true' ? true: false;;
+        $musica = $request_data['musica'] === 'true' ? true: false;
 
         $not_found_first = false;
 
-        $tst = new TstOperation();
         $response_data = array();
-        // $tipo = su:Antro
-        // $precio = su:Moderado => su:Barato
-        // $distancia = Cerca
-        // $musica = false
+
+        $tst = new TstOperation();
         $result = $tst->searchPlaces($id, $tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia);
-        $nuevo_precio = $tst->findNewPrice($precio);
-        $correct = 0;
+
         $temp = array();
+
+        $correct = 0;
         foreach ($result as $place) {
             $comments = $place['comentarios'];
             foreach ($comments as $comment) {
-                // echo '<pre>' . var_export($comment['comentario'], true) . '</pre>';
                 $prediction = $data->classification($comment);
                 if ($prediction == str_replace("su:", "", $precio)) $correct++;
             }
@@ -287,6 +287,8 @@ $app->post('/search', function (Request $request, Response $response) {
         }
 
         $result = (sizeof($temp) >= 2)  ? $temp : $result;
+
+        $nuevo_precio = $tst->findNewPrice($precio);
 
         while ($nuevo_precio != $precio && (sizeof($result) < 3)) {
             $not_found_first = true;
@@ -316,7 +318,6 @@ $app->post('/search', function (Request $request, Response $response) {
                 if (!empty($diff)) $result = array_merge($result, $temp);
             }
         }
-
 
         while ($nuevo_precio != $precio || (sizeof($result) > 4 && sizeof($result) < 7)) {
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);

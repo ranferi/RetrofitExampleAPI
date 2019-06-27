@@ -973,11 +973,7 @@ class TstOperation
                 ?user su:idUsuario ?id .
                 ?user su:email ?correo .
                 ?user su:usuario ?usuario . }";
-        /*if ($id_user != null) {
-            $query .= ".\nFILTER (?id != " . $id_user . ") } ";
-        } else {
-            $query .= ".\n } ";
-        }*/
+
         $result = $this->endpoint->query($query);
         foreach ($result as $comment) {
             $id = $this->getIdFromURI($comment->blank_c->getUri(), "r_user_comment_");
@@ -990,22 +986,6 @@ class TstOperation
             $temp_5['id'] = $comment->id->getValue();
             $temp_5['usuario'] = $comment->usuario->getValue();
             $temp_5['email'] = $comment->correo->getValue();
-            /*$visito = array();
-            $id_user_place = $this->getIdFromURI($comment->blank_c->getUri(), "r_user_place_");
-            $visito['id'] = $id_user_place;
-            $visito['sitio_src'] = $place_src;
-            $visito['precio'] = $place_src;
-            $visito['gusto'] = $place_src;
-            $visito['co'] = $place_src;
-            $visito['sitio'] = array();
-
-            $sitio = array();
-            $sitio['id'] = $id_sitio;
-            array_push($visito['sitio'], $sitio);
-            $temp_5['visito'] = array();
-            array_push($temp_5['visito'], $visito);*/
-
-
             $temp_4['user'] = $temp_5;
             array_push($comments, $temp_4);
         }
