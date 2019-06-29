@@ -88,7 +88,7 @@ class Data
 
     public function add($comment) {
         array_push($this->training_data, $comment);
-        echo '<pre>' . var_export($this->training_data, true) . '</pre>';
+        // echo '<pre>' . var_export($this->training_data, true) . '</pre>';
         $this->training($this->training_data);
     }
 }

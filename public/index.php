@@ -286,6 +286,10 @@ $app->post('/search', function (Request $request, Response $response) {
             if ($percent > 60) array_push($temp, $place);
         }
 
+        if (!empty($temp)) {
+
+        }
+
         $result = (sizeof($temp) >= 2)  ? $temp : $result;
 
         $nuevo_precio = $tst->findNewPrice($precio);

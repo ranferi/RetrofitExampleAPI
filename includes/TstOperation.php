@@ -533,7 +533,7 @@ class TstOperation
     function searchPlace($price, $type, $music)
     {
         $result = $this->endpoint->query("
-        select DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
+        SELECT DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
         WHERE {
             ?sujeto su:idSitio ?id .
             ?sujeto a [
