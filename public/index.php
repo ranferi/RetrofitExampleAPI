@@ -548,7 +548,7 @@ function compareArraysById($obj_a, $obj_b)
 
 function compareArraysBySimilarity($obj_a, $obj_b)
 {
-    return ($obj_a["similitud"] - $obj_b["similitud"]);
+    return ($obj_b["similitud"] - $obj_a["similitud"]);
 }
 /**
  * Checa que los parámetros no estén vacíos
