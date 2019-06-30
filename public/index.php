@@ -153,13 +153,18 @@ $app->get('/compa', function (Request $request, Response $response) {
     $temp['musica'] = true;
     array_push($points, $temp);
 
+    $temp = array();
+    $temp['id'] = 123;
+    $temp['medi'] = "Buena2";
+    $temp['musica'] = false;
+    array_push($points, $temp);
+
     $points1 = array();
     $temp1 = array();
     $temp1['id'] = 123;
     $temp1['medi'] = "Buena2";
     $temp1['musica'] = false;
     array_push($points1, $temp1);
-
 
     $temp2 = array();
     $temp2['id'] = 124;
@@ -182,6 +187,7 @@ $app->get('/compa', function (Request $request, Response $response) {
         return ($obj_a["id"] - $obj_b["id"]);
     });
 
+    $result = array_merge($points, $points1);
     /*if (!empty($diff)) {
         array_push($points1, $diff);
     }*/
@@ -273,64 +279,54 @@ $app->post('/search', function (Request $request, Response $response) {
         $tst = new TstOperation();
         $result = $tst->searchPlaces($id, $tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia);
 
-        $temp = array();
-
         $correct = 0;
-        foreach ($result as $place) {
+        foreach ($result as &$place) {
             $comments = $place['comentarios'];
             foreach ($comments as $comment) {
                 $prediction = $data->classification($comment);
                 if ($prediction == str_replace("su:", "", $precio)) $correct++;
             }
-            $percent = 100 * $correct / sizeof($result);
-            if ($percent > 60) array_push($temp, $place);
+            $percent = 100 * $correct / count($result);
+            if ($percent > 60)  {
+                $place['similitud'] = 5;
+            } else {
+                $place['similitud'] = 4;
+            }
         }
-
-        if (!empty($temp)) {
-
-        }
-
-        $result = (sizeof($temp) >= 2)  ? $temp : $result;
 
         $nuevo_precio = $tst->findNewPrice($precio);
 
-        while ($nuevo_precio != $precio && (sizeof($result) < 3)) {
+        while ($nuevo_precio != $precio && ($correct < 3)) {
             $not_found_first = true;
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia);
-            if (!empty($temp)) {
-                $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
-                if (!empty($diff)) $result = array_merge($result, $temp);
-            }
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 4);
             $nuevo_precio = $tst->findNewPrice($nuevo_precio);
         }
 
-        if (sizeof($result) < 3) {
+        if (count($result) < 3) {
             $not_found_price = true;
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);
             echo '<pre>' . var_export(gettype($musica), true) . '</pre>';
-            if (!empty($temp)) {
-                $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
-                if (!empty($diff)) $result = array_merge($result, $temp);
-            }
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 3);
         }
 
-        if (sizeof($result) < 3) {
+        if (count($result) < 3) {
             $not_found_music = true;
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null);
-            if (!empty($temp)) {
-                $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
-                if (!empty($diff)) $result = array_merge($result, $temp);
-            }
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 2);
         }
 
-        while ($nuevo_precio != $precio || (sizeof($result) > 4 && sizeof($result) < 7)) {
+        while ($nuevo_precio != $precio || (count($result) > 4 && count($result) < 7)) {
             $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);
-            if (!empty($temp)) {
-                $diff = array_udiff($temp, $result, "TstOperation::compareArraysById");
-                if (!empty($diff)) $result = array_merge($result, $temp);
-            }
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 1);
             $nuevo_precio = $tst->findNewPrice($nuevo_precio);
         }
+
+        usort($result, "compareArraysBySimilarity");
 
         if ($result) {
             $response_data['error'] = false;
@@ -351,6 +347,8 @@ $app->post('/search', function (Request $request, Response $response) {
         return $response->withJson($params);
     }
 });
+
+
 
 /**
  * Se actualiza la información de un usuario
@@ -533,6 +531,25 @@ $app->get('/nlp', function (Request $request, Response $response) {
 });
 
 
+function mergeDiffWithArray($temp, $result, $similitud) {
+    $diff = array_udiff($temp, $result, "compareArraysById");
+    if (!empty($diff)) {
+        foreach ($diff as &$place) $place['similitud'] = $similitud;
+        return array_merge($result, $diff);
+    } else {
+        return $result;
+    }
+}
+
+function compareArraysById($obj_a, $obj_b)
+{
+    return ($obj_a["id"] - $obj_b["id"]);
+}
+
+function compareArraysBySimilarity($obj_a, $obj_b)
+{
+    return ($obj_a["similitud"] - $obj_b["similitud"]);
+}
 /**
  * Checa que los parámetros no estén vacíos
  *

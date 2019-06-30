@@ -431,10 +431,7 @@ class TstOperation
         return $all_POI;
     }
 
-    public static function compareArraysById($obj_a, $obj_b)
-    {
-        return ($obj_a["id"] - $obj_b["id"]);
-    }
+
 
     function findNewPrice($previousPrice)
     {
@@ -1012,61 +1009,15 @@ class TstOperation
         return strrpos($haystack, $needle) ? substr($haystack, 0, strrpos($haystack, $needle) + $trail) : false;
     }
 
+
+    public static function compareArraysById($obj_a, $obj_b)
+    {
+        return ($obj_a["id"] - $obj_b["id"]);
+    }
+
+    public static function compareArraysBySimilarity($obj_a, $obj_b)
+    {
+        return ($obj_a["similitud"] - $obj_b["similitud"]);
+    }
+
 }
-
-
-/*
- *
-PREFIX su: <http://www.semanticweb.org/ranferi/ontologies/2018/9/ssrsi_onto#>
-PREFIX owl: <http://www.w3.org/2002/07/owl#>
-PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-INSERT DATA {
-su:user_768177 su:visito _:r_user_place_5 .
-_:r_user_place_5 a su:RelacionUsuarioSitio .
-_:r_user_place_5 su:idUsuarioSitio 200001 .
-_:r_user_place_5 su:sitioVisitado su:place_14005 .
-_:r_user_place_5 su:daCalificacionPrecio _:r_user_rating_5 .
-_:r_user_place_5 su:dejaComentario _:r_user_comment_5 .
-_:r_user_place_5 su:leGusto "true"^^xsd:boolean .
-
-_:r_user_rating_5 a su:RelacionUsuarioCalificacionPrecio .
-_:r_user_rating_5 su:idUsuarioCalif 300001 .
-_:r_user_rating_5 su:calificacionDeUsuarioPrecio su:Barato .
-
-_:r_user_comment_5 a su:RelacionUsuarioComentario .
-_:r_user_comment_5 su:idUsuarioComen 400001 .
-_:r_user_comment_5 su:conComentario "Esta bienasdsadas" .
-}
-*/
-
-/*$names = array();
-$result = $this->endpoint->query("
-        SELECT ?nombreSitio ?base
-        WHERE {
-            " . $place_src . " su:tienePropiedad ?prop .
-            ?prop su:nombreSitio ?nombreSitio .
-            ?prop su:provieneDeBD ?base .
-        }"
-);
-foreach ($result as $name) {
-    $temp_2 = array();
-    $temp_2['nombre_sitio'] = $name->nombreSitio->getValue();
-    $temp_2['proviene'] = $name->base->localName();
-    array_push($names, $temp_2);
-}*/
-
-// Visito el sitio
-/*$visito = array();
-
-if (isset($place->idUsuarioSitio))
-    $visito['id'] = $place->idUsuarioSitio->getValue();
-if (isset($place->gusto))
-    $visito['gusto'] = $place->gusto->getValue();
-if (isset($place->calif))
-    $visito['precio'] = $place->calif->shorten();
-$visitantes = array();
-$visitantes['id'] = 768177;
-$visitantes['usuario'] = "incubo";
-$visitantes['email'] = "usuario@gmail.com";
-// $visito['visitantes'] = $visitantes;
-$temp['visitaron'] = $visito;*/
