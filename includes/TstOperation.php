@@ -344,7 +344,7 @@ class TstOperation
     }
 
     // echo '<pre>' . var_export($allPoints, true) . '</pre>';
-    function searchPlaces($id, $selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $visited_cat = null, $distance = null)
+    function searchPlaces($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null)
     {
         $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
         $all_POI = array();
@@ -400,7 +400,7 @@ class TstOperation
             if (!empty($children_cat) && is_array($children_cat)) {
                 $a = array();
                 foreach ($children_cat as $cat) {
-                    $temp = $this->searchPlaces($id, $cat, $price, $music, $lat_user, $long_user, false, null, $distance);
+                    $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, null, $distance);
                     if (!empty($temp)) $a = array_merge($a, $temp);
                 }
                 if (!empty($a) && !empty($all_POI)) {
@@ -416,7 +416,7 @@ class TstOperation
             if (!empty($parent_cat) && is_array($parent_cat)) {
                 $b = array();
                 foreach ($parent_cat as $cat) {
-                    $temp = $this->searchPlaces($id, $cat, $price, $music, $lat_user, $long_user, false, $selected_cat, $distance);
+                    $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, $selected_cat, $distance);
                     if (!empty($temp)) $b = array_merge($b, $temp);
                 }
                 if (!empty($b) && !empty($all_POI)) {

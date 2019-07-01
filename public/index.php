@@ -279,14 +279,14 @@ $app->post('/search', function (Request $request, Response $response) {
         $tst = new TstOperation();
         $result = $tst->searchPlaces($id, $tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia);
 
-        $correct = 0;
+        $similar = 0;
         foreach ($result as &$place) {
             $comments = $place['comentarios'];
             foreach ($comments as $comment) {
                 $prediction = $data->classification($comment);
-                if ($prediction == str_replace("su:", "", $precio)) $correct++;
+                if ($prediction == str_replace("su:", "", $precio)) $similar++;
             }
-            $percent = 100 * $correct / count($result);
+            $percent = 100 * $similar / count($result);
             if ($percent > 60)  {
                 $place['similitud'] = 5;
             } else {
@@ -296,9 +296,9 @@ $app->post('/search', function (Request $request, Response $response) {
 
         $nuevo_precio = $tst->findNewPrice($precio);
 
-        while ($nuevo_precio != $precio && ($correct < 3)) {
+        while ($nuevo_precio != $precio && ($similar < 3)) {
             $not_found_first = true;
-            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia);
+            $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 4);
             $nuevo_precio = $tst->findNewPrice($nuevo_precio);
@@ -306,7 +306,7 @@ $app->post('/search', function (Request $request, Response $response) {
 
         if (count($result) < 3) {
             $not_found_price = true;
-            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);
+            $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia, null);
             echo '<pre>' . var_export(gettype($musica), true) . '</pre>';
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 3);
@@ -314,13 +314,13 @@ $app->post('/search', function (Request $request, Response $response) {
 
         if (count($result) < 3) {
             $not_found_music = true;
-            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null);
+            $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 2);
         }
 
         while ($nuevo_precio != $precio || (count($result) > 4 && count($result) < 7)) {
-            $temp = $tst->searchPlaces($id, $tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia);
+            $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, null, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 1);
             $nuevo_precio = $tst->findNewPrice($nuevo_precio);
