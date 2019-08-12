@@ -139,7 +139,7 @@ $app->get('/users', function (Request $request, Response $response) {
 });
 
 
-$app->get('/prueba', function (Request $request, Response $response) {
+$app->get('/list', function (Request $request, Response $response) {
     $tst = new TstOperation();
     $places = $tst->getAllPoints();
     return $response->withJson(array("places" => $places));
@@ -260,31 +260,34 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
  * operaciones en la triplestore (TstOperation) y filtra los resultados.
  */
 $app->post('/search', function (Request $request, Response $response) {
-    $params = isTheseParametersAvailable(array('id', 'tipo', 'precio', 'distancia'));
+    $params = isTheseParametersAvailable(array('tipo', 'precio', 'distancia'));
     if (!$params["error"]) {
         $data = $this->get("data");
         $request_data = $request->getParsedBody();
 
-        $id = $request_data['id'];
         $tipo = "su:" . $request_data['tipo'];
         $temp_precio = $request_data['precio'];
-        $precio = "su:" . $data->classification($temp_precio);
+        $clase_precio = $data->classification($temp_precio);
+        $precio = "su:" . $clase_precio;
         $distancia = $request_data['distancia'];
         $musica = $request_data['musica'] === 'true' ? true: false;
 
         $not_found_first = false;
 
+        echo '<pre>' . var_export($clase_precio, true) . '</pre>';
+
         $response_data = array();
 
         $tst = new TstOperation();
-        $result = $tst->searchPlaces($id, $tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia);
+        $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia);
 
+        echo '<pre>' . var_export($result, true) . '</pre>';
         $similar = 0;
         foreach ($result as &$place) {
             $comments = $place['comentarios'];
             foreach ($comments as $comment) {
                 $prediction = $data->classification($comment);
-                if ($prediction == str_replace("su:", "", $precio)) $similar++;
+                if ($prediction == $clase_precio) $similar++;
             }
             $percent = 100 * $similar / count($result);
             if ($percent > 60)  {
@@ -328,7 +331,7 @@ $app->post('/search', function (Request $request, Response $response) {
 
         usort($result, "compareArraysBySimilarity");
 
-        if ($result) {
+        if (!empty($result)) {
             $response_data['error'] = false;
             //$response_data['first'] = $not_found_first;
             //$response_data['price'] = $not_found_price;
@@ -355,20 +358,7 @@ $app->post('/search', function (Request $request, Response $response) {
  */
 $app->get('/visited/{id}', function (Request $request, Response $response) {
     $id = $request->getAttribute('id');
-
     $tst = new TstOperation();
-    $response_data = array();
-
-  /*  if ($tst->getAllVisitedPlacesByUser($id)) {
-        $response_data['error'] = false;
-        $response_data['message'] = 'Actualización exitosa';
-        // $response_data['user'] = $tst->getUserByEmail($email);
-    } else {
-        $response_data['error'] = true;
-        $response_data['message'] = 'No se actualizó';
-    }*/
-
-//    return $response->withJson($response_data);
     $users = $tst->getAllVisitedPlacesByUser($id);
     return $response->withJson(array("users" => $users));
 });
@@ -406,43 +396,6 @@ $app->post('/opinion/{id}', function (Request $request, Response $response) {
 })->add($mw);
 
 $app->get('/nlp', function (Request $request, Response $response) {
-    /*$s1 = "La comida no está tan buena, abusan de la grasa. No es malo el lugar pero por los precios podrías esperar más.
-";
-    $s2 = "por los precios podrías esperar más";
-
-    $tok = new WhitespaceTokenizer();
-    $J = new JaccardIndex();
-    $cos = new CosineSimilarity();
-    $simhash = new Simhash(16); // 16 bits hash
-
-    $setA = $tok->tokenize($s1);
-    $setB = $tok->tokenize($s2);
-
-    printf (
-        "
-    Jaccard:  %.3f
-    Cosine:   %.3f
-    Simhash:  %.3f
-    SimhashA: %s
-    SimhashB: %s
-    ",
-        $J->similarity(
-            $setA,
-            $setB
-        ),
-        $cos->similarity(
-            $setA,
-            $setB
-        ),
-        $simhash->similarity(
-            $setA,
-            $setB
-        ),
-        $simhash->simhash($setA),
-        $simhash->simhash($setB)
-    );*/
-
-
     // ---------- Datos ----------------
     // para el entrenamiento
     $testing = array(

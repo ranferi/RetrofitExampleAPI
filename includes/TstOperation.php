@@ -8,7 +8,6 @@ class TstOperation
     private $endpoint;
     private $math;
     private $priceArray = array(0 => 'su:Barato', 1 => 'su:Moderado', 2 => 'su:Caro', 3 => 'su:MuyCaro');
-    private $count;
 
     function __construct()
     {
@@ -20,10 +19,10 @@ class TstOperation
         EasyRdf_Namespace::set('rdfs', 'http://www.w3.org/2000/01/rdf-schema#');
         EasyRdf_Namespace::set('owl', 'http://www.w3.org/2002/07/owl#');
 
-        $config = array("timeout"=>500, "maxredirects" => 6);
+        $config = array("timeout" => 500, "maxredirects" => 6);
         EasyRdf_Http::setDefaultHttpClient(
-             $this->client = new EasyRdf_Http_Client(null, $config)
-         );
+            $this->client = new EasyRdf_Http_Client(null, $config)
+        );
 
         $this->gs = new EasyRdf_GraphStore('http://localhost:3030/repositories/ssrsi/rdf-graphs/service');
 
@@ -67,7 +66,7 @@ class TstOperation
 
             if ($response->isSuccessful())
                 return USER_CREATED;
-            return USER_CREATION_FAILED; 
+            return USER_CREATION_FAILED;
         }
         return USER_EXIST;
     }
@@ -125,7 +124,7 @@ class TstOperation
         }"
         );
 
-        return $result->numRows()  > 0;
+        return $result->numRows() > 0;
     }
 
     /***
@@ -140,8 +139,7 @@ class TstOperation
      * @param $apellido_materno
      * @return bool
      */
-    function updateProfile($id, $usuario, $email, $pass, $nombre, $apellido_paterno, $apellido_materno)
-    {
+    function updateProfile($id, $usuario, $email, $pass, $nombre, $apellido_paterno, $apellido_materno) {
         $pass_md5 = md5($pass);
 
         $response = $this->endpoint->update("
@@ -343,13 +341,14 @@ class TstOperation
         return $users;
     }
 
-    // echo '<pre>' . var_export($allPoints, true) . '</pre>';
     function searchPlaces($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null)
     {
         $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
+        echo '<pre>' . var_export($type_array, true) . '</pre>';
         $all_POI = array();
         foreach ($type_array as $cat) {
-            $result = $this->searchPlace($price, $cat, $music);
+
+            $result = $this->searchPlaceOnTriplestore($price, $cat, $music);
             foreach ($result as $place) {
                 if ($distance != null) {
                     $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
@@ -382,7 +381,7 @@ class TstOperation
                 $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
 
                 // Comentarios
-                $temp_comments1 = $this->getCommentsOfPlace($sujeto );
+                $temp_comments1 = $this->getCommentsOfPlace($sujeto);
                 $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto, $temp_id);
                 $comments = array_merge($temp_comments1, $temp_comments2);
                 $temp['comentarios'] = $comments;
@@ -391,13 +390,13 @@ class TstOperation
             }
         }
 
-        if (sizeOf($all_POI) < 3) {
+        if (count($all_POI) < 3) {
             $children_cat = $this->searchChildCat($selected_cat);
             if ($visited_cat) {
                 $pos = array_search($visited_cat, $children_cat);
                 unset($children_cat[$pos]);
             }
-            if (!empty($children_cat) && is_array($children_cat)) {
+            if (!empty($children_cat)) {
                 $a = array();
                 foreach ($children_cat as $cat) {
                     $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, null, $distance);
@@ -411,9 +410,9 @@ class TstOperation
                 }
             }
         }
-        if (sizeof($all_POI) < 3 && $root_cat) {
+        if (count($all_POI) < 3 && $root_cat) {
             $parent_cat = $this->searchParentCat($selected_cat);
-            if (!empty($parent_cat) && is_array($parent_cat)) {
+            if (!empty($parent_cat)) {
                 $b = array();
                 foreach ($parent_cat as $cat) {
                     $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, $selected_cat, $distance);
@@ -432,20 +431,19 @@ class TstOperation
     }
 
 
-
     function findNewPrice($previousPrice)
     {
         $pos = array_search($previousPrice, $this->priceArray);
         $module = 4;
         $r = ($pos - 1) % $module;
-        if ($r < 0)
-        {
+        if ($r < 0) {
             $r += abs($module);
         }
         return $this->priceArray[$r];
     }
 
-    function searchSuperCat($type) {
+    function searchSuperCat($type)
+    {
         $result = $this->endpoint->query("
         SELECT ?super 
         WHERE {
@@ -473,9 +471,9 @@ class TstOperation
             {
                 SELECT ?sup (count(?mid) - 1 as ?distance)
                 WHERE {
-                    " . $type ." rdfs:subClassOf+ ?mid .
+                    " . $type . " rdfs:subClassOf+ ?mid .
                     ?mid rdfs:subClassOf* ?sup .
-                    FILTER (?sup != " . $type .") .
+                    FILTER (?sup != " . $type . ") .
                     FILTER (?sup != owl:Nothing ) .
                 }
                 GROUP BY ?sup 
@@ -486,7 +484,8 @@ class TstOperation
 
         $array = array();
         foreach ($result as $cat) {
-            if ($cat != null && isset($cat->sup)) array_push($array, $cat->sup->shorten());
+            if ($cat != null && isset($cat->sup))
+                array_push($array, $cat->sup->shorten());
         }
         return $array;
     }
@@ -505,18 +504,14 @@ class TstOperation
                 FILTER(?sub != owl:Nothing ) .
             }
             GROUP BY ?sub 
-            ORDER BY ?sub
         }
         FILTER( ?distance < 2 )
         } ");
 
         $array = array();
         foreach ($result as $cat) {
-
-            if (isset($cat->sub) && $cat != null)  {
-
+            if ($cat != null && isset($cat->sub))
                 array_push($array, $cat->sub->shorten());
-            }
         }
         return $array;
     }
@@ -527,10 +522,10 @@ class TstOperation
      * @param $music
      * @return object
      */
-    function searchPlace($price, $type, $music)
+    function searchPlaceOnTriplestore($price, $type, $music)
     {
         $result = $this->endpoint->query("
-        SELECT DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
+        SELECT DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?direccion
         WHERE {
             ?sujeto su:idSitio ?id .
             ?sujeto a [
@@ -543,9 +538,9 @@ class TstOperation
                 owl:onProperty su:tienePrecio ;
                 owl:someValuesFrom " . $price . "
             ] .
-            ?sujeto su:tienePropiedad/su:categoria/a " . $type ." .
-            ?sujeto su:tienePropiedad/su:direccionSitio ?dir .
-            ?sujeto su:tienePropiedad/su:musica " . ($music ? 'true' : 'false')  . " .
+            ?sujeto su:tienePropiedad/su:categoria/a " . $type . " .
+            ?sujeto su:tienePropiedad/su:direccionSitio ?direccion .
+            ?sujeto su:tienePropiedad/su:musica " . ($music ? 'true' : 'false') . " .
             ?sujeto su:tienePropiedad/su:latitud ?latitud .
             ?sujeto su:tienePropiedad/su:longitud ?longitud .
         }"
@@ -561,7 +556,8 @@ class TstOperation
      * @param $long_place
      * @return float
      */
-    function calculateDistance($lat_user, $long_user, $lat_place, $long_place) {
+    function calculateDistance($lat_user, $long_user, $lat_place, $long_place)
+    {
         return $this->math->distanceVincenty(
             new Geokit\LatLng($lat_user, $long_user),
             new Geokit\LatLng($lat_place, $long_place))->meters();
@@ -571,7 +567,8 @@ class TstOperation
      * @param $distanceWithinPointUser
      * @return string
      */
-    function compareDistance($distanceWithinPointUser) {
+    function compareDistance($distanceWithinPointUser)
+    {
         if ($distanceWithinPointUser >= 0.0 || $distanceWithinPointUser < 100.0) $distance = "Cerca";
         else if ($distanceWithinPointUser >= 100.0 || $distanceWithinPointUser < 500.0) $distance = "Media";
         else $distance = "Lejos";
@@ -593,8 +590,7 @@ class TstOperation
             ?sujeto su:tienePropiedad/su:musica ?musica .
             OPTIONAL { ?sujeto su:tienePropiedad/su:latitud ?latitud . }
             OPTIONAL { ?sujeto su:tienePropiedad/su:longitud ?longitud . }
-        }
-        LIMIT 5"
+        }"
         );
 
         $points = array();
@@ -634,7 +630,7 @@ class TstOperation
             $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
 
             // Comentarios
-            $temp_comments1 = $this->getCommentsOfPlace($sujeto );
+            $temp_comments1 = $this->getCommentsOfPlace($sujeto);
             $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto, $temp_id);
             $comments = array_merge($temp_comments1, $temp_comments2);
             $temp['comentarios'] = $comments;
@@ -644,7 +640,7 @@ class TstOperation
         return $points;
     }
 
-    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) 
+    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment)
     {
         $recursos = $this->checkIfSiteVisited($id, $idPlace);
         $id_r1 = $this->createID(200000, 300000, "user_place");
@@ -653,10 +649,10 @@ class TstOperation
         if (!empty($recursos)) {
             // existe el vinculo de un usuario con un sitio visitado
             $query = "SELECT DISTINCT ?o 
-                      WHERE {" . $this->stringWhereQuery($id, $idPlace) . 
-                      " FILTER(isUri(?o1) && STRSTARTS(STR(?o1), STR(su:))) }";
+                      WHERE {" . $this->stringWhereQuery($id, $idPlace) .
+                " FILTER(isUri(?o1) && STRSTARTS(STR(?o1), STR(su:))) }";
             $res_rel = $this->endpoint->query($query);
-            
+
             $r = array();
             foreach ($res_rel as $prop) {
                 $r = array_merge($r, $this->typeBlankNode($prop->o->getUri()));
@@ -664,7 +660,7 @@ class TstOperation
             $recursos = array_merge($recursos, $r);
 
             $delete_query = "DELETE { ?u su:visito ?r . ?r ?p ?o . ?o ?p1 ?o1 . }";
-            $delete_query .= "WHERE {". $this->stringWhereQuery($id, $idPlace) . " }";
+            $delete_query .= "WHERE {" . $this->stringWhereQuery($id, $idPlace) . " }";
             $response = $this->endpoint->update($delete_query);
             // echo '<pre>' . var_export($response->isSuccessful(), true) . '</pre>';
             if (!$response->isSuccessful()) {
@@ -672,14 +668,14 @@ class TstOperation
             }
         } else {
             // no existe un sitio visitado
-            $recursos["usuario"]  = "su:user_" . strval($id);
+            $recursos["usuario"] = "su:user_" . strval($id);
             $recursos["sitio"] = "su:place_" . strval($idPlace);
             $recursos["usuario_sitio"] = "_:r_user_place_" . strval($id_r1);
             $recursos["usuario_calif"] = "_:r_user_rating_" . strval($id_r2);
             $recursos["usuario_comen"] = "_:r_user_comment_" . strval($id_r3);
             // echo '<pre>' . var_export($recursos, true) . '</pre>';
         }
-        
+
         $insert_query = "INSERT DATA {\n" .
             $recursos["usuario"] . " su:visito " . $recursos["usuario_sitio"] . " .\n" .
             $recursos["usuario_sitio"] . " a su:RelacionUsuarioSitio .\n" .
@@ -701,7 +697,8 @@ class TstOperation
         return $this->endpoint->update($insert_query);
     }
 
-    function checkIfSiteVisited($id, $idPlace) {
+    function checkIfSiteVisited($id, $idPlace)
+    {
         $query = "SELECT ?s ?p 
         WHERE { 
             ?s su:idUsuario " . strval($id) . " . 
@@ -756,44 +753,36 @@ class TstOperation
             case "comment":
                 $query = "SELECT * WHERE { ?s su:idUsuarioComen " . strval($id) . " . }";
                 break;
-            /*case "user_place":
-                $query = "SELECT * WHERE { ?s su:visito _:r_user_place_" . strval($id) . " . }";
-                break;
-            case "rating":
-                $query = "SELECT * WHERE { ?s su:daCalificacionPrecio _:r_user_rating_" . strval($id) . " . }";
-                break;
-            case "comment":
-                $query = "SELECT * WHERE { ?s su:dejaComentario _:r_user_comment_" . strval($id) . " . }";
-                break;*/
         }
         $result = $this->endpoint->query($query);
         return $result->numRows() > 0;
     }
 
-    function getIdFromURI($URI, $substr) {
+    function getIdFromURI($URI, $substr)
+    {
         $sub_uri = substr($URI, strrpos($URI, $substr));
         return intval(substr($sub_uri, strripos($sub_uri, "_") + 1));
     }
 
-    function typeBlankNode($temp) 
+    function typeBlankNode($temp)
     {
         $blank = substr($temp, strrpos($temp, "r_user_"));
-        $type  = $this->reverse_strrchr($blank, "_", 1);
+        $type = $this->reverse_strrchr($blank, "_", 1);
         $r = array();
         switch ($type) {
-                    case "r_user_rating_":
-                        $r["usuario_calif"] = "_:" . $blank;
-                        return $r;
-                    case "r_user_comment_":
-                        $r["usuario_comen"] = "_:" . $blank;
-                        return $r;
-                    case "r_user_place_":
-                        $r["usuario_sitio"] = "_:" . $blank;
-                        return $r;
-                    default:
-                        $r["error"] = true;
-                        return $r;
-                }
+            case "r_user_rating_":
+                $r["usuario_calif"] = "_:" . $blank;
+                return $r;
+            case "r_user_comment_":
+                $r["usuario_comen"] = "_:" . $blank;
+                return $r;
+            case "r_user_place_":
+                $r["usuario_sitio"] = "_:" . $blank;
+                return $r;
+            default:
+                $r["error"] = true;
+                return $r;
+        }
     }
 
     function getBasePropsPlace($place_src)
@@ -852,7 +841,7 @@ class TstOperation
         $result = $this->endpoint->query("
                 SELECT ?imagen
                 WHERE {
-                    " . $place_src. " su:tienePropiedad ?prop .
+                    " . $place_src . " su:tienePropiedad ?prop .
                     ?prop su:imagenSitio ?imagen .
                 }"
         );
@@ -910,11 +899,12 @@ class TstOperation
             array_push($ratings, $temp_3);
         }
 
-       $as = "OPTIONAL { 
+        $as = "OPTIONAL { 
         ?usuario su:visito ?v .
         ?v su:sitioVisitado ?sujeto .
         ?usuario su:idUsuario 768178 .
-    }";        return $ratings;
+    }";
+        return $ratings;
     }
 
     function getRatingsTotal($ratings)
@@ -938,7 +928,7 @@ class TstOperation
         $result = $this->endpoint->query("
                 SELECT ?comentario ?prop ?base
                 WHERE {
-                    " . $place_src. " su:tieneComentario ?prop .
+                    " . $place_src . " su:tieneComentario ?prop .
                     ?prop su:comentario ?comentario .
                     ?prop su:provieneDeBD ?base .
                 }"
@@ -990,7 +980,7 @@ class TstOperation
         return $comments;
     }
 
-    function stringWhereQuery($id, $idPlace) 
+    function stringWhereQuery($id, $idPlace)
     {
         $query = "?u su:idUsuario " . strval($id) . " .
                 ?u su:visito ?r .
@@ -1004,7 +994,7 @@ class TstOperation
         return $query;
     }
 
-    function reverse_strrchr($haystack, $needle, $trail) 
+    function reverse_strrchr($haystack, $needle, $trail)
     {
         return strrpos($haystack, $needle) ? substr($haystack, 0, strrpos($haystack, $needle) + $trail) : false;
     }

@@ -46,7 +46,6 @@ class Data
         $this->model = new FeatureBasedNB();
         $this->training($this->training_data);
         $this->cls = new MultinomialNBClassifier($this->ff, $this->model);
-
     }
 
     public static function get() {
@@ -56,9 +55,8 @@ class Data
         return self::$instance;
     }
 
-
     public function classification($comment) {
-            // predice si es caro, muy caro, moderado, barato
+        // predice si es caro, muy caro, moderado, barato
         if (isset($comment['comentario'])) {
             $prediction = $this->cls->classify(
                 array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
@@ -69,7 +67,6 @@ class Data
         } else {
             $prediction = 'Barato';
         }
-
         return $prediction;
     }
 
