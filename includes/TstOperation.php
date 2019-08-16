@@ -327,7 +327,7 @@ class TstOperation
 
             // Comentarios
             $temp_comments1 = $this->getCommentsOfPlace($temp_1['sitio_src']);
-            $temp_comments2 = $this->getCommentOfPlaceFromUser($temp_1['sitio_src'], $temp['id']);
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($temp_1['sitio_src']);
             $comments = array_merge($temp_comments1, $temp_comments2);
 
             $temp_2['comentarios'] = $comments;
@@ -344,7 +344,6 @@ class TstOperation
     function searchPlaces($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null)
     {
         $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
-        echo '<pre>' . var_export($type_array, true) . '</pre>';
         $all_POI = array();
         foreach ($type_array as $cat) {
 
@@ -363,7 +362,7 @@ class TstOperation
                 $temp['medi'] = $place->medi->localName();
                 $temp['latitud'] = $place->latitud->getValue();
                 $temp['longitud'] = $place->longitud->getValue();
-                $temp['direccion'] = $place->dir->getValue();
+                $temp['direccion'] = $place->direccion->getValue();
                 $temp['musica'] = $music;
 
                 // Nombres
@@ -382,7 +381,7 @@ class TstOperation
 
                 // Comentarios
                 $temp_comments1 = $this->getCommentsOfPlace($sujeto);
-                $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto, $temp_id);
+                $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
                 $comments = array_merge($temp_comments1, $temp_comments2);
                 $temp['comentarios'] = $comments;
 
@@ -548,7 +547,6 @@ class TstOperation
         return $result;
     }
 
-
     /**
      * @param $lat_user
      * @param $long_user
@@ -608,13 +606,6 @@ class TstOperation
             $temp['direccion'] = $place->dir->getValue();
             $temp['musica'] = $place->musica->getValue();
 
-            /*$comentario = array();
-            if (isset($place->idComm))
-                $comentario['id'] = intval($place->idComm->getValue());
-            if (isset($place->comm))
-                $comentario['comentario'] = $place->comm->getValue();
-            $visito['comentario'] = $comentario;*/
-
             // Nombres
             $temp['nombres'] = $this->getNamesOfPlace($sujeto);
 
@@ -631,7 +622,7 @@ class TstOperation
 
             // Comentarios
             $temp_comments1 = $this->getCommentsOfPlace($sujeto);
-            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto, $temp_id);
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
             $comments = array_merge($temp_comments1, $temp_comments2);
             $temp['comentarios'] = $comments;
 
@@ -640,8 +631,7 @@ class TstOperation
         return $points;
     }
 
-    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment)
-    {
+    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) {
         $recursos = $this->checkIfSiteVisited($id, $idPlace);
         $id_r1 = $this->createID(200000, 300000, "user_place");
         $id_r2 = $this->createID(300000, 400000, "rating");
@@ -662,7 +652,6 @@ class TstOperation
             $delete_query = "DELETE { ?u su:visito ?r . ?r ?p ?o . ?o ?p1 ?o1 . }";
             $delete_query .= "WHERE {" . $this->stringWhereQuery($id, $idPlace) . " }";
             $response = $this->endpoint->update($delete_query);
-            // echo '<pre>' . var_export($response->isSuccessful(), true) . '</pre>';
             if (!$response->isSuccessful()) {
                 return false;
             }
@@ -673,7 +662,6 @@ class TstOperation
             $recursos["usuario_sitio"] = "_:r_user_place_" . strval($id_r1);
             $recursos["usuario_calif"] = "_:r_user_rating_" . strval($id_r2);
             $recursos["usuario_comen"] = "_:r_user_comment_" . strval($id_r3);
-            // echo '<pre>' . var_export($recursos, true) . '</pre>';
         }
 
         $insert_query = "INSERT DATA {\n" .
@@ -692,7 +680,6 @@ class TstOperation
             $recursos["usuario_comen"] . " a su:RelacionUsuarioComentario .\n" .
             $recursos["usuario_comen"] . " su:idUsuarioComen " . $id_r3 . " .\n" .
             $recursos["usuario_comen"] . " su:conComentario \"" . $comment . "\" .\n" . "}";
-        // echo '<pre>' . var_export($insert_query, true) . '</pre>';
 
         return $this->endpoint->update($insert_query);
     }
@@ -946,7 +933,7 @@ class TstOperation
 
     }
 
-    function getCommentOfPlaceFromUser($place_src, $id_sitio)
+    function getCommentOfPlaceFromUser($place_src)
     {
         $comments = array();
         $query = "

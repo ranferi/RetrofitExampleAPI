@@ -138,7 +138,6 @@ $app->get('/users', function (Request $request, Response $response) {
     return $response->withJson(array("users" => $users));
 });
 
-
 $app->get('/list', function (Request $request, Response $response) {
     $tst = new TstOperation();
     $places = $tst->getAllPoints();
@@ -202,7 +201,6 @@ function compare_ids($obj_a, $obj_b) {
     return ($obj_a["id"] - $obj_b["id"]);
 }
 
-
 function array_diff_assoc_recursive($array1, $array2) {
     $difference=array();
     foreach($array1 as $key => $value) {
@@ -220,7 +218,6 @@ function array_diff_assoc_recursive($array1, $array2) {
     }
     return !isset($difference) ? 0 : $difference;
 }
-
 
 /**
  * Se actualiza la información de un usuario
@@ -274,14 +271,14 @@ $app->post('/search', function (Request $request, Response $response) {
 
         $not_found_first = false;
 
-        echo '<pre>' . var_export($clase_precio, true) . '</pre>';
+        // echo '<pre>' . var_export($clase_precio, true) . '</pre>';
 
         $response_data = array();
 
         $tst = new TstOperation();
         $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia);
 
-        echo '<pre>' . var_export($result, true) . '</pre>';
+        // echo '<pre>' . var_export($result, true) . '</pre>';
         $similar = 0;
         foreach ($result as &$place) {
             $comments = $place['comentarios'];
@@ -310,7 +307,7 @@ $app->post('/search', function (Request $request, Response $response) {
         if (count($result) < 3) {
             $not_found_price = true;
             $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia, null);
-            echo '<pre>' . var_export(gettype($musica), true) . '</pre>';
+            // echo '<pre>' . var_export(gettype($musica), true) . '</pre>';
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 3);
         }
@@ -351,8 +348,6 @@ $app->post('/search', function (Request $request, Response $response) {
     }
 });
 
-
-
 /**
  * Se actualiza la información de un usuario
  */
@@ -378,8 +373,7 @@ $app->post('/opinion/{id}', function (Request $request, Response $response) {
 
         $c = array(0 => $price, 1 => $comment);
 
-        //if ($tst->insertUserRatingSite($id, $id_place, $liked, $price, $comment)) {
-        if (true) {
+        if ($tst->insertUserRatingSite($id, $id_place, $liked, $price, $comment)) {
             $response_data['error'] = false;
             $response_data['message'] = 'Se envió tu opinión. ¡Gracias!';
             $response_data['comment'] = $c;
