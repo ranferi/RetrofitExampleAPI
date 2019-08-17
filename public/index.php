@@ -117,6 +117,7 @@ $app->post('/login', function (Request $request, Response $response) {
 
         if ($tst->userLogin($email, $password)) {
             $response_data['error'] = false;
+            $response_data['message'] = 'Inicio de sesión exitoso';
             $response_data['user'] = $tst->getUserByEmail($email);
         } else {
             $response_data['error'] = true;
