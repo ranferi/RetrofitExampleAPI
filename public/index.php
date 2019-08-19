@@ -329,6 +329,7 @@ $app->post('/search', function (Request $request, Response $response) {
 
         usort($result, "compareArraysBySimilarity");
 
+
         if (!empty($result)) {
             $response_data['error'] = false;
             //$response_data['first'] = $not_found_first;
