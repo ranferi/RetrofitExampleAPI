@@ -277,7 +277,7 @@ $app->post('/search', function (Request $request, Response $response) {
         $response_data = array();
 
         $tst = new TstOperation();
-        $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia);
+        $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia, null);
 
         // echo '<pre>' . var_export($result, true) . '</pre>';
         $similar = 0;

@@ -24,10 +24,10 @@ class TstOperation
             $this->client = new EasyRdf_Http_Client(null, $config)
         );
 
-        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/repositories/ssrsi/rdf-graphs/service');
+        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/repositories/SSRSI/rdf-graphs/service');
 
-        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/ssrsi",
-            "http://localhost:3030/repositories/ssrsi/statements");
+        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/SSRSI",
+            "http://localhost:3030/repositories/SSRSI/statements");
 
         $this->math = new Math();
     }
