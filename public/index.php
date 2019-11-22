@@ -263,6 +263,7 @@ $app->post('/search', function (Request $request, Response $response) {
         $data = $this->get("data");
         $request_data = $request->getParsedBody();
 
+        $id = strval($request_data['id']);
         $tipo = "su:" . $request_data['tipo'];
         $temp_precio = $request_data['precio'];
         $clase_precio = $data->classification($temp_precio);
@@ -327,8 +328,14 @@ $app->post('/search', function (Request $request, Response $response) {
             $nuevo_precio = $tst->findNewPrice($nuevo_precio);
         }
 
-        usort($result, "compareArraysBySimilarity");
+        if (count($result) < 3) {
+            $temp = $tst->getAllVisitedPlacesByUser($id);
+            $temp = array_slice($temp, 0, 3);
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 0);
+        }
 
+        usort($result, "compareArraysBySimilarity");
 
         if (!empty($result)) {
             $response_data['error'] = false;
