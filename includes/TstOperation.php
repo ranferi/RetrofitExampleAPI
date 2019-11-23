@@ -337,8 +337,56 @@ class TstOperation
 
         }
         array_push($users, $temp);
-
         return $users;
+    }
+
+    function getVisitedPlacesByUser($id)
+    {
+        $temp_id = intval($id);
+
+        $visited = $this->endpoint->query("
+        SELECT ?sujeto ?a ?sitio ?precio ?comentario ?c ?gusto
+        WHERE {
+            ?sujeto su:idUsuario " . $temp_id . " .
+            ?sujeto su:visito ?a . 
+            ?a su:sitioVisitado ?sitio .
+            ?a su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
+            ?a su:dejaComentario ?c . 
+            ?c su:conComentario ?comentario .
+            ?a su:leGusto ?gusto .
+        }");
+
+        $temp = array();
+        foreach ($visited as $place) {
+            $sitio_src = $place->sitio->shorten();
+
+            // Propiedades
+            $temp_2 = $this->getBasePropsPlace($sitio_src);
+
+            // Nombres
+            $temp_2['nombres'] = $this->getNamesOfPlace($sitio_src);
+
+            // Calificaciones
+            $ratings = $this->getRatingsOfPlace($sitio_src);
+            $temp_2['calificaciones'] = $ratings;
+            $temp_2['total'] = $this->getRatingsTotal($ratings);
+
+            // Categorias
+            $temp_2['categorias'] = $this->getCategoriesOfPlace($sitio_src);
+
+            // Imagenes
+            $temp_2['imagenes'] = $this->getImagesOfPlace($sitio_src);
+
+            // Comentarios
+            $temp_comments1 = $this->getCommentsOfPlace($sitio_src);
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($sitio_src);
+            $comments = array_merge($temp_comments1, $temp_comments2);
+
+            $temp_2['comentarios'] = $comments;
+
+            array_push($temp, $temp_2);
+        }
+        return $temp;
     }
 
     function searchPlaces($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null)

@@ -271,10 +271,6 @@ $app->post('/search', function (Request $request, Response $response) {
         $distancia = $request_data['distancia'];
         $musica = $request_data['musica'] === 'true' ? true: false;
 
-        $not_found_first = false;
-
-        // echo '<pre>' . var_export($clase_precio, true) . '</pre>';
-
         $response_data = array();
 
         $tst = new TstOperation();
@@ -299,7 +295,6 @@ $app->post('/search', function (Request $request, Response $response) {
         $nuevo_precio = $tst->findNewPrice($precio);
 
         while ($nuevo_precio != $precio && ($similar < 3)) {
-            $not_found_first = true;
             $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 4);
@@ -307,15 +302,12 @@ $app->post('/search', function (Request $request, Response $response) {
         }
 
         if (count($result) < 3) {
-            $not_found_price = true;
             $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia, null);
-            // echo '<pre>' . var_export(gettype($musica), true) . '</pre>';
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 3);
         }
 
         if (count($result) < 3) {
-            $not_found_music = true;
             $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 2);
@@ -329,7 +321,7 @@ $app->post('/search', function (Request $request, Response $response) {
         }
 
         if (count($result) < 3) {
-            $temp = $tst->getAllVisitedPlacesByUser($id);
+            $temp = $tst->getVisitedPlacesByUser($id);
             $temp = array_slice($temp, 0, 3);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 0);
@@ -339,13 +331,8 @@ $app->post('/search', function (Request $request, Response $response) {
 
         if (!empty($result)) {
             $response_data['error'] = false;
-            //$response_data['first'] = $not_found_first;
-            //$response_data['price'] = $not_found_price;
-            //$response_data['music'] = $not_found_music;
             $response_data['message'] = 'busqueda exitosa';
             $response_data['places'] = $result;
-            // $response
-            // $response_data['user'] = $tst->getUserByEmail($email);
         } else {
             $response_data['error'] = true;
             $response_data['message'] = 'Ocurrió un error, intenta de nuevo!';
