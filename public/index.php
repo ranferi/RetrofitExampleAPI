@@ -30,21 +30,14 @@ require __DIR__ . '/../src/routes.php';
 $app->run();*/
 
 use \Psr\Http\Message\ServerRequestInterface as Request;
-use NlpTools\Tokenizers\WhitespaceAndPunctuationTokenizer;
-// use \Psr\Http\Message\ResponseInterface as Response;
 use Slim\Http\Response;
 
 use \NlpTools\Tokenizers\WhitespaceTokenizer;
-use \NlpTools\Similarity\JaccardIndex;
-use \NlpTools\Similarity\CosineSimilarity;
-use \NlpTools\Similarity\Simhash;
-
 use NlpTools\Models\FeatureBasedNB;
 use NlpTools\Documents\TrainingSet;
 use NlpTools\Documents\TokensDocument;
 use NlpTools\FeatureFactories\DataAsFeatures;
 use NlpTools\Classifiers\MultinomialNBClassifier;
-
 
 require '../vendor/autoload.php';
 require_once '../includes/TstOperation.php';
@@ -54,11 +47,13 @@ $settings = require __DIR__ . '/../src/settings.php';
 $app = new \Slim\App($settings);
 require __DIR__ . '/../src/dependencies.php';
 
+/***
+ * Añade un comentario un comentario antes de clasificar
+ */
 $mw = (function (Request $request, Response $response, callable $next) {
     $response = $next($request, $response);
     $data = $this->get("data");
     $body = json_decode($response->getBody()->__toString());
-    // echo '<pre>' . var_export($body, true) . '</pre>';
     $data->add($body->comment);
     return $response;
 });
@@ -139,86 +134,14 @@ $app->get('/users', function (Request $request, Response $response) {
     return $response->withJson(array("users" => $users));
 });
 
+/**
+ * Muestra una lista con todos los sitios
+ */
 $app->get('/list', function (Request $request, Response $response) {
     $tst = new TstOperation();
     $places = $tst->getAllPoints();
     return $response->withJson(array("places" => $places));
 });
-
-$app->get('/compa', function (Request $request, Response $response) {
-    $points = array();
-    $temp = array();
-    $temp['id'] = 125;
-    $temp['medi'] = "Buena1";
-    $temp['musica'] = true;
-    array_push($points, $temp);
-
-    $temp = array();
-    $temp['id'] = 123;
-    $temp['medi'] = "Buena2";
-    $temp['musica'] = false;
-    array_push($points, $temp);
-
-    $points1 = array();
-    $temp1 = array();
-    $temp1['id'] = 123;
-    $temp1['medi'] = "Buena2";
-    $temp1['musica'] = false;
-    array_push($points1, $temp1);
-
-    $temp2 = array();
-    $temp2['id'] = 124;
-    $temp2['medi'] = "Buena3";
-    $temp2['musica'] = false;
-    array_push($points1, $temp2);
-    /*$n = 4;
-    $r = -1 % $n;
-    if ($r < 0)
-    {
-        $r += abs($n);
-    }
-    echo '<pre>' . $r . '</pre>';*/
-
-
-    $diff = array_udiff($points, $points1, function ($obj_a, $obj_b) {
-        //echo '<pre>' . var_export($obj_b, true) . '</pre>';
-        //echo "\n\n\n" ;
-        //echo '<pre>' . var_export($obj_a, true) . '</pre>';
-        return ($obj_a["id"] - $obj_b["id"]);
-    });
-
-    $result = array_merge($points, $points1);
-    /*if (!empty($diff)) {
-        array_push($points1, $diff);
-    }*/
-
-    return $response->withJson($diff);
-});
-
-function compare_ids($obj_a, $obj_b) {
-    //echo '<pre>' . var_export($obj_b, true) . '</pre>';
-    //echo "\n\n\n" ;
-    //echo '<pre>' . var_export($obj_a, true) . '</pre>';
-    return ($obj_a["id"] - $obj_b["id"]);
-}
-
-function array_diff_assoc_recursive($array1, $array2) {
-    $difference=array();
-    foreach($array1 as $key => $value) {
-        if( is_array($value) ) {
-            if( !isset($array2[$key]) || !is_array($array2[$key]) ) {
-                $difference[$key] = $value;
-            } else {
-                $new_diff = array_diff_assoc_recursive($value, $array2[$key]);
-                if( !empty($new_diff) )
-                    $difference[$key] = $new_diff;
-            }
-        } else if( !array_key_exists($key,$array2) || $array2[$key] !== $value ) {
-            $difference[$key] = $value;
-        }
-    }
-    return !isset($difference) ? 0 : $difference;
-}
 
 /**
  * Se actualiza la información de un usuario
@@ -354,6 +277,9 @@ $app->get('/visited/{id}', function (Request $request, Response $response) {
     return $response->withJson(array("users" => $users));
 });
 
+/**
+ * Envía la opinión de un usuario
+ */
 $app->post('/opinion/{id}', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('id_sitio', 'gusto', 'precio', 'comentario'));
     if (!$params["error"]) {
@@ -385,6 +311,9 @@ $app->post('/opinion/{id}', function (Request $request, Response $response) {
     }
 })->add($mw);
 
+/**
+ * Ruta que muestra un ejemplo de como usar NLP
+ */
 $app->get('/nlp', function (Request $request, Response $response) {
     // ---------- Datos ----------------
     // para el entrenamiento
@@ -465,14 +394,14 @@ $app->get('/nlp', function (Request $request, Response $response) {
         if ($prediction == $d[0])
             $correct++;
     }
-
     printf("Accuracy: %.2f\n", 100 * $correct / count($testing));
 
-
-    // echo '<pre>' . var_export($tok->tokenize($text), true) . '</pre>';
     return true;
 });
 
+/*****
+ * Métodos auxiliares
+ */
 
 function mergeDiffWithArray($temp, $result, $similitud) {
     $diff = array_udiff($temp, $result, "compareArraysById");

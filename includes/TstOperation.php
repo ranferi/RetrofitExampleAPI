@@ -32,6 +32,12 @@ class TstOperation
         $this->math = new Math();
     }
 
+
+
+    /****************************
+     * Usuario
+     ****************************/
+
     /***
      * Crea un usuario en la TripleStore
      *
@@ -71,40 +77,6 @@ class TstOperation
         return USER_EXIST;
     }
 
-    /***
-     * Método para revisar si el correo ya existe en ontología
-     *
-     * @param $email
-     * @return bool
-     */
-    function checkEmailExist($email)
-    {
-        $result = $this->endpoint->query(
-            'SELECT * WHERE {' .
-            ' ?usuario su:email "' . $email . '" ' .
-            '}'
-        );
-        return $result->numRows() > 0;
-    }
-
-    /***
-     * Método para revisar si el correo ya existe en ontología
-     *
-     * @param $user
-     * @return bool
-     */
-    function checkUserExist($user)
-    {
-        $result = $this->endpoint->query(
-            'SELECT * WHERE {' .
-            ' ?usuario su:usuario "' . $user . '" ' .
-            '}'
-        );
-
-        return $result->numRows() > 0;
-    }
-
-
     /**
      * Método para 'logear' usuario
      *
@@ -128,6 +100,39 @@ class TstOperation
     }
 
     /***
+     * Método para revisar si el usuario existe en ontología
+     *
+     * @param $user
+     * @return bool
+     */
+    function checkUserExist($user)
+    {
+        $result = $this->endpoint->query(
+            'SELECT * WHERE {' .
+            ' ?usuario su:usuario "' . $user . '" ' .
+            '}'
+        );
+
+        return $result->numRows() > 0;
+    }
+
+    /***
+     * Método para revisar si el correo ya existe en ontología
+     *
+     * @param $email
+     * @return bool
+     */
+    function checkEmailExist($email)
+    {
+        $result = $this->endpoint->query(
+            'SELECT * WHERE {' .
+            ' ?usuario su:email "' . $email . '" ' .
+            '}'
+        );
+        return $result->numRows() > 0;
+    }
+
+    /***
      * Método para actualizar al usuario
      *
      * @param $id
@@ -139,7 +144,8 @@ class TstOperation
      * @param $apellido_materno
      * @return bool
      */
-    function updateProfile($id, $usuario, $email, $pass, $nombre, $apellido_paterno, $apellido_materno) {
+    function updateProfile($id, $usuario, $email, $pass, $nombre, $apellido_paterno, $apellido_materno)
+    {
         $pass_md5 = md5($pass);
 
         $response = $this->endpoint->update("
@@ -161,38 +167,6 @@ class TstOperation
         );
 
         return $response->isSuccessful();
-    }
-
-    /**
-     * Método para obtener un usuario por su email
-     * @param $user
-     * @return array
-     */
-    function getUserByUsername($user)
-    {
-        $result = $this->endpoint->query("
-        SELECT ?sujeto ?id ?nombre ?usuario ?apellidoPaterno ?apellidoMaterno
-        WHERE {
-            ?sujeto su:usuario \"$user\" .
-            ?sujeto su:idUsuario ?id .
-            ?sujeto su:nombre ?nombre .
-            ?sujeto su:apellidoPaterno ?apellidoPaterno .
-            ?sujeto su:apellidoMaterno ?apellidoMaterno .
-            ?sujeto su:email ?email.
-        }"
-        );
-        $user = array();
-
-        if ($result->numRows() == 1) {
-            $user['id'] = $result->current()->id->getValue();
-            $user['name'] = $result->current()->nombre->getValue();
-            $user['lastName'] = $result->current()->apellidoPaterno->getValue();
-            $user['mothersMaidenName'] = $result->current()->apellidoMaterno->getValue();
-            $user['user'] = $user;
-            $user['email'] = $result->current()->email->getValue();
-        }
-
-        return $user;
     }
 
     /**
@@ -255,6 +229,191 @@ class TstOperation
         return $users;
     }
 
+
+
+    /****************************
+     * Sitios
+     ****************************/
+
+    /**
+     * Método que regresa todos los sitios de la ontología
+     * @return array
+     */
+    function getAllPoints()
+    {
+        $result = $this->endpoint->query("
+        SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
+        WHERE {
+            ?sujeto su:idSitio ?id .
+            ?sujeto a [
+                a owl:Restriction;
+                owl:onProperty su:tieneUnValorMEDI;
+                owl:someValuesFrom ?medi
+            ] .
+            ?sujeto su:tienePropiedad/su:direccionSitio ?dir .
+            ?sujeto su:tienePropiedad/su:musica ?musica .
+            OPTIONAL { ?sujeto su:tienePropiedad/su:latitud ?latitud . }
+            OPTIONAL { ?sujeto su:tienePropiedad/su:longitud ?longitud . }
+        }"
+        );
+
+        $points = array();
+        foreach ($result as $place) {
+            $sujeto = $place->sujeto->shorten();
+            $temp_id = $place->id->getValue();
+
+            $temp = array();
+            $temp['id'] = $temp_id;
+            $temp['medi'] = $place->medi->localName();
+            if (isset($place->latitud))
+                $temp['latitud'] = $place->latitud->getValue();
+            if (isset($place->longitud))
+                $temp['longitud'] = $place->longitud->getValue();
+            $temp['direccion'] = $place->dir->getValue();
+            $temp['musica'] = $place->musica->getValue();
+
+            /*// Nombres
+            $temp['nombres'] = $this->getNamesOfPlace($sujeto);
+
+            // Calificaciones
+            $ratings = $this->getRatingsOfPlace($sujeto);
+            $temp['calificaciones'] = $ratings;
+            $temp['total'] = $this->getRatingsTotal($ratings);
+
+            // Categorias
+            $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
+
+            // Imagenes
+            $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
+
+            // Comentarios
+            $temp_comments1 = $this->getCommentsOfPlace($sujeto);
+            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
+            $comments = array_merge($temp_comments1, $temp_comments2);
+            $temp['comentarios'] = $comments;*/
+
+            $temp_props = $this->getPropertiesJSON($sujeto);
+            $resultado = array_merge($temp, $temp_props);
+
+            array_push($points, $resultado);
+        }
+        return $points;
+    }
+
+    /**
+     * Método para buscar sitios
+     * @param $selected_cat
+     * @param $price
+     * @param $music
+     * @param $lat_user
+     * @param $long_user
+     * @param bool $root_cat
+     * @param null $distance
+     * @param null $visited_cat
+     * @return array
+     */
+    function searchPlaces($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null)
+    {
+
+        /*if ($root_cat == false) {
+            echo '<pre>' . var_export($visited_cat, true) . '</pre>';
+        }*/
+        $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
+        $all_POI = array();
+        foreach ($type_array as $cat) {
+
+            $result = $this->searchPlaceOnTriplestore($price, $cat, $music);
+            foreach ($result as $place) {
+                if ($distance != null) {
+                    $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
+                    if ($distance != $distanceFromPlace) continue;
+                }
+
+                $sujeto = $place->sujeto->shorten();
+                $temp_id = $place->id->getValue();
+
+                $temp = array();
+                $temp['id'] = $temp_id;
+                $temp['medi'] = $place->medi->localName();
+                $temp['latitud'] = $place->latitud->getValue();
+                $temp['longitud'] = $place->longitud->getValue();
+                $temp['direccion'] = $place->direccion->getValue();
+                $temp['musica'] = $music;
+
+                /*// Nombres
+                $temp['nombres'] = $this->getNamesOfPlace($sujeto);
+
+                // Calificaciones
+                $ratings = $this->getRatingsOfPlace($sujeto);
+                $temp['calificaciones'] = $ratings;
+                $temp['total'] = $this->getRatingsTotal($ratings);
+
+                // Categorias
+                $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
+
+                // Imagenes
+                $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
+
+                // Comentarios
+                $temp_comments1 = $this->getCommentsOfPlace($sujeto);
+                $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
+                $comments = array_merge($temp_comments1, $temp_comments2);
+                $temp['comentarios'] = $comments;*/
+                $temp_props = $this->getPropertiesJSON($sujeto);
+                $resultado = array_merge($temp, $temp_props);
+
+                array_push($all_POI, $resultado);
+            }
+        }
+
+        if (count($all_POI) < 3) {
+            $children_cat = $this->searchChildCat($selected_cat);
+            if ($visited_cat) {
+                $pos = array_search($visited_cat, $children_cat);
+                unset($children_cat[$pos]);
+            }
+            if (!empty($children_cat)) {
+                $a = array();
+                foreach ($children_cat as $cat) {
+                    $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, $distance, null);
+                    if (!empty($temp)) $a = array_merge($a, $temp);
+                }
+                if (!empty($a) && !empty($all_POI)) {
+                    $diff = array_udiff($a, $all_POI, "self::compareArraysById");
+                    if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
+                } else if (!empty($a) && empty($all_POI)) {
+                    $all_POI = array_merge($all_POI, $a);
+                }
+            }
+        }
+
+        if (count($all_POI) < 3 && $root_cat) {
+            $parent_cat = $this->searchParentCat($selected_cat);
+
+            if (!empty($parent_cat)) {
+                $b = array();
+                foreach ($parent_cat as $cat) {
+                    $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, $distance, $selected_cat);
+                    if (!empty($temp)) $b = array_merge($b, $temp);
+                }
+                if (!empty($b) && !empty($all_POI)) {
+                    $diff = array_udiff($b, $all_POI, "self::compareArraysById");
+                    if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
+                } else if (!empty($b) && empty($all_POI)) {
+                    $all_POI = array_merge($all_POI, $b);
+                }
+            }
+        }
+
+        // echo '<pre>' . var_export($all_POI, true) . '</pre>';
+        return $all_POI;
+    }
+
+    /**
+     * Método para obtener los sitios visitados por un usuario con los comentarios que haya dejado
+     * @param $id
+     * @return array
+     */
     function getAllVisitedPlacesByUser($id)
     {
         $user = $this->endpoint->query("
@@ -340,6 +499,11 @@ class TstOperation
         return $users;
     }
 
+    /**
+     * Método para obtener los sitios visitados por un usuario
+     * @param $id
+     * @return array
+     */
     function getVisitedPlacesByUser($id)
     {
         $temp_id = intval($id);
@@ -362,130 +526,121 @@ class TstOperation
 
             // Propiedades
             $temp_2 = $this->getBasePropsPlace($sitio_src);
+            $temp_props = $this->getPropertiesJSON($sitio_src);
+            $resultado = array_merge($temp_2, $temp_props);
 
-            // Nombres
-            $temp_2['nombres'] = $this->getNamesOfPlace($sitio_src);
-
-            // Calificaciones
-            $ratings = $this->getRatingsOfPlace($sitio_src);
-            $temp_2['calificaciones'] = $ratings;
-            $temp_2['total'] = $this->getRatingsTotal($ratings);
-
-            // Categorias
-            $temp_2['categorias'] = $this->getCategoriesOfPlace($sitio_src);
-
-            // Imagenes
-            $temp_2['imagenes'] = $this->getImagesOfPlace($sitio_src);
-
-            // Comentarios
-            $temp_comments1 = $this->getCommentsOfPlace($sitio_src);
-            $temp_comments2 = $this->getCommentOfPlaceFromUser($sitio_src);
-            $comments = array_merge($temp_comments1, $temp_comments2);
-
-            $temp_2['comentarios'] = $comments;
-
-            array_push($temp, $temp_2);
+            array_push($temp, $resultado);
         }
         return $temp;
     }
 
-    function searchPlaces($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null)
+    /**
+     * Método que busca sitios en la triplestore
+     * @param $price
+     * @param $type
+     * @param $music
+     * @return object
+     */
+    function searchPlaceOnTriplestore($price, $type, $music)
     {
-
-        /*if ($root_cat == false) {
-            echo '<pre>' . var_export($visited_cat, true) . '</pre>';
-        }*/
-        $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
-        $all_POI = array();
-        foreach ($type_array as $cat) {
-
-            $result = $this->searchPlaceOnTriplestore($price, $cat, $music);
-            foreach ($result as $place) {
-                if ($distance != null) {
-                    $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
-                    if ($distance != $distanceFromPlace) continue;
-                }
-
-                $sujeto = $place->sujeto->shorten();
-                $temp_id = $place->id->getValue();
-
-                $temp = array();
-                $temp['id'] = $temp_id;
-                $temp['medi'] = $place->medi->localName();
-                $temp['latitud'] = $place->latitud->getValue();
-                $temp['longitud'] = $place->longitud->getValue();
-                $temp['direccion'] = $place->direccion->getValue();
-                $temp['musica'] = $music;
-
-                // Nombres
-                $temp['nombres'] = $this->getNamesOfPlace($sujeto);
-
-                // Calificaciones
-                $ratings = $this->getRatingsOfPlace($sujeto);
-                $temp['calificaciones'] = $ratings;
-                $temp['total'] = $this->getRatingsTotal($ratings);
-
-                // Categorias
-                $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
-
-                // Imagenes
-                $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
-
-                // Comentarios
-                $temp_comments1 = $this->getCommentsOfPlace($sujeto);
-                $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
-                $comments = array_merge($temp_comments1, $temp_comments2);
-                $temp['comentarios'] = $comments;
-
-                array_push($all_POI, $temp);
-            }
-        }
-
-        if (count($all_POI) < 3) {
-            $children_cat = $this->searchChildCat($selected_cat);
-            if ($visited_cat) {
-                $pos = array_search($visited_cat, $children_cat);
-                unset($children_cat[$pos]);
-            }
-            if (!empty($children_cat)) {
-                $a = array();
-                foreach ($children_cat as $cat) {
-                    $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, $distance, null);
-                    if (!empty($temp)) $a = array_merge($a, $temp);
-                }
-                if (!empty($a) && !empty($all_POI)) {
-                    $diff = array_udiff($a, $all_POI, "self::compareArraysById");
-                    if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
-                } else if (!empty($a) && empty($all_POI)) {
-                    $all_POI = array_merge($all_POI, $a);
-                }
-            }
-        }
-
-        if (count($all_POI) < 3 && $root_cat) {
-            $parent_cat = $this->searchParentCat($selected_cat);
-
-            if (!empty($parent_cat)) {
-                $b = array();
-                foreach ($parent_cat as $cat) {
-                    $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, $distance, $selected_cat);
-                    if (!empty($temp)) $b = array_merge($b, $temp);
-                }
-                if (!empty($b) && !empty($all_POI)) {
-                    $diff = array_udiff($b, $all_POI, "self::compareArraysById");
-                    if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
-                } else if (!empty($b) && empty($all_POI)) {
-                    $all_POI = array_merge($all_POI, $b);
-                }
-            }
-        }
-
-        // echo '<pre>' . var_export($all_POI, true) . '</pre>';
-        return $all_POI;
-        // return null;
+        /** @noinspection SqlDialectInspection */
+        $result = $this->endpoint->query("
+        SELECT DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?direccion
+        WHERE {
+            ?sujeto su:idSitio ?id .
+            ?sujeto a [
+                a owl:Restriction ;
+                owl:onProperty su:tieneUnValorMEDI ;
+                owl:someValuesFrom ?medi
+            ] .
+            ?sujeto a [
+                a owl:Restriction ;
+                owl:onProperty su:tienePrecio ;
+                owl:someValuesFrom " . $price . "
+            ] .
+            ?sujeto su:tienePropiedad/su:categoria/a " . $type . " .
+            ?sujeto su:tienePropiedad/su:direccionSitio ?direccion .
+            ?sujeto su:tienePropiedad/su:musica " . ($music ? 'true' : 'false') . " .
+            ?sujeto su:tienePropiedad/su:latitud ?latitud .
+            ?sujeto su:tienePropiedad/su:longitud ?longitud .
+        }"
+        );
+        return $result;
     }
 
+    /**
+     * Método para obtener propiedades del sitio (id, latitud, longitud)
+     * @param $place_src
+     * @return array
+     */
+    function getBasePropsPlace($place_src)
+    {
+        $string = "
+                SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
+                WHERE {
+                    " . $place_src . " su:idSitio ?id .
+                    " . $place_src . " a [
+                        a owl:Restriction;
+                        owl:onProperty su:tieneUnValorMEDI;
+                        owl:someValuesFrom ?medi
+                    ] .
+                    " . $place_src . " su:tienePropiedad/su:direccionSitio ?dir .
+                    " . $place_src . " su:tienePropiedad/su:musica ?musica .
+                    OPTIONAL { " . $place_src . " su:tienePropiedad/su:latitud ?latitud . }
+                    OPTIONAL { " . $place_src . " su:tienePropiedad/su:longitud ?longitud . }
+                }";
+        $result = $this->endpoint->query($string);
 
+        $props = array();
+        $props['id'] = $result->current()->id->getValue();
+        $props['medi'] = $result->current()->medi->localName();
+        if (isset($result->current()->latitud))
+            $props['latitud'] = $result->current()->latitud->getValue();
+        if (isset($result->current()->longitud))
+            $props['longitud'] = $result->current()->longitud->getValue();
+        $props['direccion'] = $result->current()->dir->getValue();
+        $props['musica'] = $result->current()->musica->getValue();
+        return $props;
+    }
+
+    /**
+     * Obtiene las propiedades importantes para el JSON
+     * @param $sitio_src
+     * @return array
+     */
+    function getPropertiesJSON($sitio_src)
+    {
+        $temp_props = array();
+
+        // Nombres
+        $temp_props['nombres'] = $this->getNamesOfPlace($sitio_src);
+
+        // Calificaciones
+        $ratings = $this->getRatingsOfPlace($sitio_src);
+        $temp_props['calificaciones'] = $ratings;
+        $temp_props['total'] = $this->getRatingsTotal($ratings);
+
+        // Categorias
+        $temp_props['categorias'] = $this->getCategoriesOfPlace($sitio_src);
+
+        // Imagenes
+        $temp_props['imagenes'] = $this->getImagesOfPlace($sitio_src);
+
+        // Comentarios
+        $temp_comments1 = $this->getCommentsOfPlace($sitio_src);
+        $temp_comments2 = $this->getCommentOfPlaceFromUser($sitio_src);
+        $comments = array_merge($temp_comments1, $temp_comments2);
+
+        $temp_props['comentarios'] = $comments;
+
+        return $temp_props;
+    }
+
+    /**
+     * Encuentra un nuevo precio
+     * @param $previousPrice
+     * @return mixed
+     */
     function findNewPrice($previousPrice)
     {
         $pos = array_search($previousPrice, $this->priceArray);
@@ -497,27 +652,11 @@ class TstOperation
         return $this->priceArray[$r];
     }
 
-    function searchSuperCat($type)
-    {
-        $result = $this->endpoint->query("
-        SELECT ?super 
-        WHERE {
-            " . $type . " rdfs:subClassOf+ ?super .
-            FILTER NOT EXISTS {
-            
-                su:CategoriasFoursquare rdfs:subClassOf+ ?super .
-                }
-            FILTER (?super != " . $type . ") .
-            } 
-        ");
-
-        $array = array();
-        foreach ($result as $cat) {
-            if ($cat != null && isset($cat->super)) array_push($array, $cat->super->shorten());
-        }
-        return $array;
-    }
-
+    /**
+     * Método para buscar la categoría padre de una categoría
+     * @param $type
+     * @return array
+     */
     function searchParentCat($type)
     {
         $result = $this->endpoint->query("
@@ -545,6 +684,11 @@ class TstOperation
         return $array;
     }
 
+    /**
+     * Método para buscar las categorías hijos de un categoría
+     * @param $type
+     * @return array
+     */
     function searchChildCat($type)
     {
         $result = $this->endpoint->query("
@@ -571,37 +715,11 @@ class TstOperation
         return $array;
     }
 
-    /**
-     * @param $price
-     * @param $type
-     * @param $music
-     * @return object
-     */
-    function searchPlaceOnTriplestore($price, $type, $music)
-    {
-        $result = $this->endpoint->query("
-        SELECT DISTINCT ?sujeto ?id ?medi ?latitud ?longitud ?direccion
-        WHERE {
-            ?sujeto su:idSitio ?id .
-            ?sujeto a [
-                a owl:Restriction ;
-                owl:onProperty su:tieneUnValorMEDI ;
-                owl:someValuesFrom ?medi
-            ] .
-            ?sujeto a [
-                a owl:Restriction ;
-                owl:onProperty su:tienePrecio ;
-                owl:someValuesFrom " . $price . "
-            ] .
-            ?sujeto su:tienePropiedad/su:categoria/a " . $type . " .
-            ?sujeto su:tienePropiedad/su:direccionSitio ?direccion .
-            ?sujeto su:tienePropiedad/su:musica " . ($music ? 'true' : 'false') . " .
-            ?sujeto su:tienePropiedad/su:latitud ?latitud .
-            ?sujeto su:tienePropiedad/su:longitud ?longitud .
-        }"
-        );
-        return $result;
-    }
+
+
+    /****************************
+     * Métodos Auxiliares
+     ****************************/
 
     /**
      * @param $lat_user
@@ -629,65 +747,17 @@ class TstOperation
         return $distance;
     }
 
-    function getAllPoints()
+    /**
+     * Método que ingresa una calificación de un usuario a un sitio
+     * @param $id
+     * @param $idPlace
+     * @param $liked
+     * @param $price
+     * @param $comment
+     * @return bool|object
+     */
+    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment)
     {
-        $result = $this->endpoint->query("
-        SELECT ?sujeto ?id ?medi ?latitud ?longitud ?dir ?musica
-        WHERE {
-            ?sujeto su:idSitio ?id .
-            ?sujeto a [
-                a owl:Restriction;
-                owl:onProperty su:tieneUnValorMEDI;
-                owl:someValuesFrom ?medi
-            ] .
-            ?sujeto su:tienePropiedad/su:direccionSitio ?dir .
-            ?sujeto su:tienePropiedad/su:musica ?musica .
-            OPTIONAL { ?sujeto su:tienePropiedad/su:latitud ?latitud . }
-            OPTIONAL { ?sujeto su:tienePropiedad/su:longitud ?longitud . }
-        }"
-        );
-
-        $points = array();
-        foreach ($result as $place) {
-            $sujeto = $place->sujeto->shorten();
-            $temp_id = $place->id->getValue();
-
-            $temp = array();
-            $temp['id'] = $temp_id;
-            $temp['medi'] = $place->medi->localName();
-            if (isset($place->latitud))
-                $temp['latitud'] = $place->latitud->getValue();
-            if (isset($place->longitud))
-                $temp['longitud'] = $place->longitud->getValue();
-            $temp['direccion'] = $place->dir->getValue();
-            $temp['musica'] = $place->musica->getValue();
-
-            // Nombres
-            $temp['nombres'] = $this->getNamesOfPlace($sujeto);
-
-            // Calificaciones
-            $ratings = $this->getRatingsOfPlace($sujeto);
-            $temp['calificaciones'] = $ratings;
-            $temp['total'] = $this->getRatingsTotal($ratings);
-
-            // Categorias
-            $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
-
-            // Imagenes
-            $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
-
-            // Comentarios
-            $temp_comments1 = $this->getCommentsOfPlace($sujeto);
-            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
-            $comments = array_merge($temp_comments1, $temp_comments2);
-            $temp['comentarios'] = $comments;
-
-            array_push($points, $temp);
-        }
-        return $points;
-    }
-
-    function insertUserRatingSite($id, $idPlace, $liked, $price, $comment) {
         $recursos = $this->checkIfSiteVisited($id, $idPlace);
         $id_r1 = $this->createID(200000, 300000, "user_place");
         $id_r2 = $this->createID(300000, 400000, "rating");
@@ -740,6 +810,12 @@ class TstOperation
         return $this->endpoint->update($insert_query);
     }
 
+    /**
+     * Método que revisa si un sitio ha sido visitado por el usuario
+     * @param $id
+     * @param $idPlace
+     * @return array
+     */
     function checkIfSiteVisited($id, $idPlace)
     {
         $query = "SELECT ?s ?p 
@@ -801,12 +877,23 @@ class TstOperation
         return $result->numRows() > 0;
     }
 
+    /**
+     * Método que obtiene el ID desde un URI de la ontología
+     * @param $URI
+     * @param $substr
+     * @return int
+     */
     function getIdFromURI($URI, $substr)
     {
         $sub_uri = substr($URI, strrpos($URI, $substr));
         return intval(substr($sub_uri, strripos($sub_uri, "_") + 1));
     }
 
+    /**
+     * Método que regresa el tipo de nodo blanco
+     * @param $temp
+     * @return array
+     */
     function typeBlankNode($temp)
     {
         $blank = substr($temp, strrpos($temp, "r_user_"));
@@ -828,36 +915,11 @@ class TstOperation
         }
     }
 
-    function getBasePropsPlace($place_src)
-    {
-        $string = "
-                SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
-                WHERE {
-                    " . $place_src . " su:idSitio ?id .
-                    " . $place_src . " a [
-                        a owl:Restriction;
-                        owl:onProperty su:tieneUnValorMEDI;
-                        owl:someValuesFrom ?medi
-                    ] .
-                    " . $place_src . " su:tienePropiedad/su:direccionSitio ?dir .
-                    " . $place_src . " su:tienePropiedad/su:musica ?musica .
-                    OPTIONAL { " . $place_src . " su:tienePropiedad/su:latitud ?latitud . }
-                    OPTIONAL { " . $place_src . " su:tienePropiedad/su:longitud ?longitud . }
-                }";
-        $result = $this->endpoint->query($string);
-
-        $props = array();
-        $props['id'] = $result->current()->id->getValue();
-        $props['medi'] = $result->current()->medi->localName();
-        if (isset($result->current()->latitud))
-            $props['latitud'] = $result->current()->latitud->getValue();
-        if (isset($result->current()->longitud))
-            $props['longitud'] = $result->current()->longitud->getValue();
-        $props['direccion'] = $result->current()->dir->getValue();
-        $props['musica'] = $result->current()->musica->getValue();
-        return $props;
-    }
-
+    /**
+     * Método que obtiene los nombres de un sitio desde distintas fuentes
+     * @param $place_src
+     * @return array
+     */
     function getNamesOfPlace($place_src)
     {
         $names = array();
@@ -878,6 +940,11 @@ class TstOperation
         return $names;
     }
 
+    /**
+     * Método que obtiene las imagenes de un sitio
+     * @param $place_src
+     * @return array
+     */
     function getImagesOfPlace($place_src)
     {
         $images = array();
@@ -897,6 +964,11 @@ class TstOperation
         return $images;
     }
 
+    /**
+     * Método que obtiene las categorías de un sitio desde distintas fuentes
+     * @param $place_src
+     * @return array
+     */
     function getCategoriesOfPlace($place_src)
     {
         $cats = array();
@@ -923,6 +995,11 @@ class TstOperation
         return $cats;
     }
 
+    /**
+     * Método que obtiene las calificaciones de un sitio de un sitio desde distintas fuentes
+     * @param $place_src
+     * @return array
+     */
     function getRatingsOfPlace($place_src)
     {
         $ratings = array();
@@ -950,6 +1027,11 @@ class TstOperation
         return $ratings;
     }
 
+    /**
+     * Método que promedia las calificaciones de un sitio
+     * @param $ratings
+     * @return float|mixed
+     */
     function getRatingsTotal($ratings)
     {
         $total = 0.0;
@@ -965,6 +1047,11 @@ class TstOperation
         return $total;
     }
 
+    /**
+     * Método que obtiene los comentarios de un sitio que han dejado usuarios desde las fuentes
+     * @param $place_src
+     * @return array
+     */
     function getCommentsOfPlace($place_src)
     {
         $comments = array();
@@ -989,6 +1076,12 @@ class TstOperation
 
     }
 
+
+    /**
+     * Método que obtiene los comentarios de un sitio que han dejado los usuarios de SSRSI
+     * @param $place_src
+     * @return array
+     */
     function getCommentOfPlaceFromUser($place_src)
     {
         $comments = array();
@@ -1023,6 +1116,12 @@ class TstOperation
         return $comments;
     }
 
+    /**
+     * Cadena WHERE de consulta para SPARQL
+     * @param $id
+     * @param $idPlace
+     * @return string
+     */
     function stringWhereQuery($id, $idPlace)
     {
         $query = "?u su:idUsuario " . strval($id) . " .
@@ -1037,11 +1136,17 @@ class TstOperation
         return $query;
     }
 
+    /**
+     * Regresa la última parte de una cadena apartir de la última aparición de un caracter
+     * @param $haystack
+     * @param $needle
+     * @param $trail
+     * @return bool|false|string
+     */
     function reverse_strrchr($haystack, $needle, $trail)
     {
         return strrpos($haystack, $needle) ? substr($haystack, 0, strrpos($haystack, $needle) + $trail) : false;
     }
-
 
     public static function compareArraysById($obj_a, $obj_b)
     {
