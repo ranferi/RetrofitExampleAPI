@@ -258,7 +258,7 @@ $app->post('/search', function (Request $request, Response $response) {
             $response_data['places'] = $result;
         } else {
             $response_data['error'] = true;
-            $response_data['message'] = 'Ocurrió un error, intenta de nuevo!';
+            $response_data['message'] = 'No se encontró ningún sitio, intenta con una nueva consulta';
         }
 
         return $response->withJson($response_data);
