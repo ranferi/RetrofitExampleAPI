@@ -404,15 +404,7 @@ $app->get('/nlp', function (Request $request, Response $response) {
  * Métodos auxiliares
  */
 
-function mergeDiffWithArray($temp, $result, $similitud) {
-    $diff = array_udiff($temp, $result, "compareArraysById");
-    if (!empty($diff)) {
-        foreach ($diff as &$place) $place['similitud'] = $similitud;
-        return array_merge($result, $diff);
-    } else {
-        return $result;
-    }
-}
+
 
 function compareArraysById($obj_a, $obj_b)
 {
