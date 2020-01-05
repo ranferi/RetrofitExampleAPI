@@ -280,16 +280,17 @@ class TstOperation
         return $points;
     }
 
-    function search($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null) {
-        $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia, null);
+    function search($selected_cat, $price, $price_class, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null) {
+        $data = $this->get("data");
 
-        // echo '<pre>' . var_export($result, true) . '</pre>';
+        // 1era búsqueda, 1era y 2da similitud
+        $result = $this->searchPlacesOnly($selected_cat, $price, $music, $lat_user, $long_user, $root_cat, $distance, $visited_cat);
         $similar = 0;
         foreach ($result as &$place) {
             $comments = $place['comentarios'];
             foreach ($comments as $comment) {
                 $prediction = $data->classification($comment);
-                if ($prediction == $clase_precio) $similar++;
+                if ($prediction == $price_class) $similar++;
             }
             $percent = 100 * $similar / count($result);
             if ($percent > 60)  {
@@ -299,42 +300,44 @@ class TstOperation
             }
         }
 
-        $nuevo_precio = $tst->findNewPrice($precio);
-
-        while ($nuevo_precio != $precio && ($similar < 3)) {
-            $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia, null);
+        $nuevo_precio = $this->findNewPrice($price);
+        // 2da búsqueda
+        while ($nuevo_precio != $price && ($similar < 3)) {
+            $temp = $this->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 4);
-            $nuevo_precio = $tst->findNewPrice($nuevo_precio);
+            $nuevo_precio = $this->findNewPrice($nuevo_precio);
         }
 
         if (count($result) < 3) {
-            $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia, null);
+            $temp = $this->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 3);
         }
 
         if (count($result) < 3) {
-            $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null, null);
+            $temp = $this->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 2);
         }
 
-        $nuevo_precio = $tst->findNewPrice($precio);
+        $nuevo_precio = $this->findNewPrice($precio);
 
         while ($nuevo_precio != $precio || (count($result) > 4 && count($result) < 7)) {
-            $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, null, null);
+            $temp = $this->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, null, null);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 1);
-            $nuevo_precio = $tst->findNewPrice($nuevo_precio);
+            $nuevo_precio = $this->findNewPrice($nuevo_precio);
         }
 
         if (count($result) < 3) {
-            $temp = $tst->getVisitedPlacesByUser($id);
+            $temp = $this->getVisitedPlacesByUser($id);
             $temp = array_slice($temp, 0, 3);
             if (!empty($temp))
                 $result = mergeDiffWithArray($temp, $result, 0);
         }
+
+        return $result;
     }
 
     /**

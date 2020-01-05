@@ -184,9 +184,9 @@ $app->post('/search', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('tipo', 'precio', 'distancia'));
     if (!$params["error"]) {
         $data = $this->get("data");
-        $request_data = $request->getParsedBody();
+        $tst = new TstOperation();
 
-        $id = strval($request_data['id']);
+        $request_data = $request->getParsedBody();
         $tipo = "su:" . $request_data['tipo'];
         $temp_precio = $request_data['precio'];
         $clase_precio = $data->classification($temp_precio);
@@ -194,10 +194,7 @@ $app->post('/search', function (Request $request, Response $response) {
         $distancia = $request_data['distancia'];
         $musica = $request_data['musica'] === 'true' ? true: false;
 
-        $response_data = array();
-
-        $tst = new TstOperation();
-        $result = $tst->search($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia, null);
+        $result = $tst->search($tipo, $precio, $clase_precio, $musica, 19.43422, -99.14084, true, $distancia, null);
         // $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia, null);
 
         // echo '<pre>' . var_export($result, true) . '</pre>';
@@ -255,6 +252,7 @@ $app->post('/search', function (Request $request, Response $response) {
 
         usort($result, "compareArraysBySimilarity");
 
+        $response_data = array();
         if (!empty($result)) {
             $response_data['error'] = false;
             $response_data['message'] = 'busqueda exitosa';
