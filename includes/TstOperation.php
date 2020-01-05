@@ -24,10 +24,10 @@ class TstOperation
             $this->client = new EasyRdf_Http_Client(null, $config)
         );
 
-        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/repositories/SSRSI/rdf-graphs/service');
+        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/repositories/SSRSIP/rdf-graphs/service');
 
-        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/SSRSI",
-            "http://localhost:3030/repositories/SSRSI/statements");
+        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/SSRSIP",
+            "http://localhost:3030/repositories/SSRSIP/statements");
 
         $this->math = new Math();
     }
@@ -272,26 +272,6 @@ class TstOperation
             $temp['direccion'] = $place->dir->getValue();
             $temp['musica'] = $place->musica->getValue();
 
-            /*// Nombres
-            $temp['nombres'] = $this->getNamesOfPlace($sujeto);
-
-            // Calificaciones
-            $ratings = $this->getRatingsOfPlace($sujeto);
-            $temp['calificaciones'] = $ratings;
-            $temp['total'] = $this->getRatingsTotal($ratings);
-
-            // Categorias
-            $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
-
-            // Imagenes
-            $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
-
-            // Comentarios
-            $temp_comments1 = $this->getCommentsOfPlace($sujeto);
-            $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
-            $comments = array_merge($temp_comments1, $temp_comments2);
-            $temp['comentarios'] = $comments;*/
-
             $temp_props = $this->getPropertiesJSON($sujeto);
             $resultado = array_merge($temp, $temp_props);
 
@@ -340,25 +320,6 @@ class TstOperation
                 $temp['direccion'] = $place->direccion->getValue();
                 $temp['musica'] = $music;
 
-                /*// Nombres
-                $temp['nombres'] = $this->getNamesOfPlace($sujeto);
-
-                // Calificaciones
-                $ratings = $this->getRatingsOfPlace($sujeto);
-                $temp['calificaciones'] = $ratings;
-                $temp['total'] = $this->getRatingsTotal($ratings);
-
-                // Categorias
-                $temp['categorias'] = $this->getCategoriesOfPlace($sujeto);
-
-                // Imagenes
-                $temp['imagenes'] = $this->getImagesOfPlace($sujeto);
-
-                // Comentarios
-                $temp_comments1 = $this->getCommentsOfPlace($sujeto);
-                $temp_comments2 = $this->getCommentOfPlaceFromUser($sujeto);
-                $comments = array_merge($temp_comments1, $temp_comments2);
-                $temp['comentarios'] = $comments;*/
                 $temp_props = $this->getPropertiesJSON($sujeto);
                 $resultado = array_merge($temp, $temp_props);
 
@@ -417,13 +378,15 @@ class TstOperation
     function getAllVisitedPlacesByUser($id)
     {
         $user = $this->endpoint->query("
-        SELECT ?sujeto ?nombre ?usuario  ?email
+        SELECT ?sujeto ?nombre ?usuario ?email
         WHERE {
             ?sujeto su:idUsuario " . $id . " .
             ?sujeto su:nombre ?nombre .
             ?sujeto su:usuario ?usuario .
             ?sujeto su:email ?email .
         }");
+
+        $s = $user->current()->sujeto->shorten();
         $users = array();
         $temp = array();
         $temp['id'] = intval($id);
@@ -433,19 +396,18 @@ class TstOperation
         $temp['visito'] = array();
 
         $visited = $this->endpoint->query("
-        SELECT ?sujeto ?a ?sitio ?precio ?comentario ?c ?gusto
+        SELECT ?a ?sitio ?precio ?comentario ?c
         WHERE {
-            ?sujeto su:idUsuario " . $temp['id'] . " .
-            ?sujeto su:visito ?a . 
+            " . $s . " su:visito ?a . 
             ?a su:sitioVisitado ?sitio .
             ?a su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
             ?a su:dejaComentario ?c . 
-            ?c su:conComentario ?comentario .
-            ?a su:leGusto ?gusto .
+            ?c su:conComentario ?comentario 
         }");
-
+        // echo '<pre>' . var_export($visited, true) . '</pre>';
         $temp_1 = array();
         foreach ($visited as $place) {
+            // echo '<pre>' . var_export($place, true) . '</pre>';
             $temp_comentario = array();
             $temp_usuario = array();
 
@@ -463,7 +425,7 @@ class TstOperation
             $temp_1['id'] = $id_visitado;
             $temp_1['sitio_src'] = $place->sitio->shorten();
             $temp_1['precio'] = $place->precio->shorten();
-            $temp_1['gusto'] = $place->gusto->getValue();
+            $temp_1['gusto'] = $this->checkLikedPlaceByUser($s, $temp_1['sitio_src']);
             $temp_1['comentario'] = $temp_comentario;
             $temp_1['sitio'] = array();
 
@@ -500,6 +462,18 @@ class TstOperation
     }
 
     /**
+     * Método que pregunta si existe la relación "leHaGustado" entre un Usuario y un Sitio
+     * @param $s
+     * @param $p
+     * @return mixed
+     */
+    function checkLikedPlaceByUser($s, $p) {
+        $liked = $this->endpoint->query("
+            ASK { " . $s . " su:leHaGustado " . $p . " }");
+        return $liked->getBoolean();
+    }
+
+    /**
      * Método para obtener los sitios visitados por un usuario
      * @param $id
      * @return array
@@ -509,16 +483,10 @@ class TstOperation
         $temp_id = intval($id);
 
         $visited = $this->endpoint->query("
-        SELECT ?sujeto ?a ?sitio ?precio ?comentario ?c ?gusto
+        SELECT ?sujeto ?sitio
         WHERE {
             ?sujeto su:idUsuario " . $temp_id . " .
-            ?sujeto su:visito ?a . 
-            ?a su:sitioVisitado ?sitio .
-            ?a su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
-            ?a su:dejaComentario ?c . 
-            ?c su:conComentario ?comentario .
-            ?a su:leGusto ?gusto .
-        }");
+            ?sujeto su:haVisitado ?sitio . }");
 
         $temp = array();
         foreach ($visited as $place) {
@@ -575,8 +543,7 @@ class TstOperation
      */
     function getBasePropsPlace($place_src)
     {
-        $string = "
-                SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
+        $string = "SELECT ?id ?medi ?latitud ?longitud ?dir ?musica
                 WHERE {
                     " . $place_src . " su:idSitio ?id .
                     " . $place_src . " a [
@@ -797,7 +764,7 @@ class TstOperation
             $recursos["usuario_sitio"] . " su:sitioVisitado " . $recursos["sitio"] . " .\n" .
             $recursos["usuario_sitio"] . " su:daCalificacionPrecio " . $recursos["usuario_calif"] . " .\n" .
             $recursos["usuario_sitio"] . " su:dejaComentario " . $recursos["usuario_comen"] . " .\n" .
-            $recursos["usuario_sitio"] . " su:leGusto \"" . $liked . "\"^^xsd:boolean .\n" .
+            ($liked ? $recursos["usuario_sitio"] . " su:leGusto " . $recursos["sitio"] . " .\n" : "\n" ) .
 
             $recursos["usuario_calif"] . " a su:RelacionUsuarioCalificacionPrecio .\n" .
             $recursos["usuario_calif"] . " su:idUsuarioCalif " . $id_r2 . " .\n" .
@@ -974,17 +941,8 @@ class TstOperation
         $cats = array();
         $result = $this->endpoint->query("
                 SELECT ?categoria ?proviene
-                WHERE {
-                    " . $place_src . " su:tienePropiedad ?prop .
-                    ?prop su:categoria ?prop1 .
-                    ?prop1 rdf:type ?categoria .
-                    ?categoria rdfs:subClassOf [ rdf:rest* [ owl:onProperty su:esParteDeBD ; owl:allValuesFrom ?proviene ] ]
-                    FILTER NOT EXISTS { 
-                        ?prop1 a ?otra .
-                        ?otra rdfs:subClassOf ?categoria .
-                        FILTER(?otra != ?categoria)
-                    }
-                }"
+                WHERE {" . $place_src . " su:tieneCategoria ?categoria .
+                ?categoria rdfs:subClassOf [ rdf:rest* [ owl:onProperty su:esParteDeBD ; owl:allValuesFrom ?proviene ] ] }"
         );
         foreach ($result as $cat) {
             $temp_3 = array();

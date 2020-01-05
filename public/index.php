@@ -236,6 +236,8 @@ $app->post('/search', function (Request $request, Response $response) {
                 $result = mergeDiffWithArray($temp, $result, 2);
         }
 
+        $nuevo_precio = $tst->findNewPrice($precio);
+
         while ($nuevo_precio != $precio || (count($result) > 4 && count($result) < 7)) {
             $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, null, null);
             if (!empty($temp))
