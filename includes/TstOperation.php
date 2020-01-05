@@ -280,6 +280,63 @@ class TstOperation
         return $points;
     }
 
+    function search($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null) {
+        $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia, null);
+
+        // echo '<pre>' . var_export($result, true) . '</pre>';
+        $similar = 0;
+        foreach ($result as &$place) {
+            $comments = $place['comentarios'];
+            foreach ($comments as $comment) {
+                $prediction = $data->classification($comment);
+                if ($prediction == $clase_precio) $similar++;
+            }
+            $percent = 100 * $similar / count($result);
+            if ($percent > 60)  {
+                $place['similitud'] = 5;
+            } else {
+                $place['similitud'] = 4;
+            }
+        }
+
+        $nuevo_precio = $tst->findNewPrice($precio);
+
+        while ($nuevo_precio != $precio && ($similar < 3)) {
+            $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia, null);
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 4);
+            $nuevo_precio = $tst->findNewPrice($nuevo_precio);
+        }
+
+        if (count($result) < 3) {
+            $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia, null);
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 3);
+        }
+
+        if (count($result) < 3) {
+            $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null, null);
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 2);
+        }
+
+        $nuevo_precio = $tst->findNewPrice($precio);
+
+        while ($nuevo_precio != $precio || (count($result) > 4 && count($result) < 7)) {
+            $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, null, null);
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 1);
+            $nuevo_precio = $tst->findNewPrice($nuevo_precio);
+        }
+
+        if (count($result) < 3) {
+            $temp = $tst->getVisitedPlacesByUser($id);
+            $temp = array_slice($temp, 0, 3);
+            if (!empty($temp))
+                $result = mergeDiffWithArray($temp, $result, 0);
+        }
+    }
+
     /**
      * Método para buscar sitios
      * @param $selected_cat
@@ -363,6 +420,58 @@ class TstOperation
                 } else if (!empty($b) && empty($all_POI)) {
                     $all_POI = array_merge($all_POI, $b);
                 }
+            }
+        }
+
+        // echo '<pre>' . var_export($all_POI, true) . '</pre>';
+        return $all_POI;
+    }
+
+
+    /**
+     * Método para buscar sitios
+     * @param $selected_cat
+     * @param $price
+     * @param $music
+     * @param $lat_user
+     * @param $long_user
+     * @param bool $root_cat
+     * @param null $distance
+     * @param null $visited_cat
+     * @return array
+     */
+    function searchPlacesOnly($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null)
+    {
+
+        /*if ($root_cat == false) {
+            echo '<pre>' . var_export($visited_cat, true) . '</pre>';
+        }*/
+        $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
+        $all_POI = array();
+        foreach ($type_array as $cat) {
+
+            $result = $this->searchPlaceOnTriplestore($price, $cat, $music);
+            foreach ($result as $place) {
+                if ($distance != null) {
+                    $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
+                    if ($distance != $distanceFromPlace) continue;
+                }
+
+                $sujeto = $place->sujeto->shorten();
+                $temp_id = $place->id->getValue();
+
+                $temp = array();
+                $temp['id'] = $temp_id;
+                $temp['medi'] = $place->medi->localName();
+                $temp['latitud'] = $place->latitud->getValue();
+                $temp['longitud'] = $place->longitud->getValue();
+                $temp['direccion'] = $place->direccion->getValue();
+                $temp['musica'] = $music;
+
+                $temp_props = $this->getPropertiesJSON($sujeto);
+                $resultado = array_merge($temp, $temp_props);
+
+                array_push($all_POI, $resultado);
             }
         }
 
