@@ -12,7 +12,6 @@ class TstOperation
 
     function __construct($data)
     {
-        require_once dirname(__FILE__) . '/Constants.php';
         require '../vendor/autoload.php';
 
         EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/ranferi/ontologies/2018/9/ssrsi_onto#');
@@ -605,7 +604,7 @@ class TstOperation
             ?a su:dejaComentario ?c . 
             ?c su:conComentario ?comentario 
         }");
-        // echo '<pre>' . var_export($visited, true) . '</pre>';
+
         $temp_1 = array();
         foreach ($visited as $place) {
             $temp_comentario = array();
