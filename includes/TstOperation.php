@@ -286,12 +286,12 @@ class TstOperation
      * Método para buscar sitios
      * @param $selected_cat
      * @param $price
+     * @param $price_class
+     * @param $music
      * @param $lat_user
      * @param $long_user
      * @param $id
      * @param null $distance
-     * @param bool $preferences
-     * @param $music
      * @return array
      */
     function search($selected_cat, $price, $price_class, $music, $lat_user, $long_user, $id, $distance = null)
@@ -445,7 +445,7 @@ class TstOperation
         $a = array();
         if (!empty($children_cat)) {
             foreach ($children_cat as $cat) {
-                $temp = $this->searchPlacesOnly($cat, $price, $lat_user, $long_user, $distance, $music, $selected_cat);
+                $temp = $this->searchPlacesOnly($cat, $price, $lat_user, $long_user, $distance, $music);
                 if (!empty($temp))
                     $a = array_merge($a, $temp);
             }
@@ -495,7 +495,7 @@ class TstOperation
      * @param $music
      * @return object
      */
-    function queryPlacesOnTriplestore($price, $type, $music, $parent = null)
+    function queryPlacesOnTriplestore($price, $type, $music)
     {
         $query = "SELECT ?sujeto ?id ?medi ?latitud ?longitud ?direccion
         WHERE {
@@ -533,14 +533,14 @@ class TstOperation
      * @param null $distance
      * @return array
      */
-    function searchPlacesOnly($selected_cat, $price, $lat_user, $long_user, $distance = null, $music = null, $parent = null)
+    function searchPlacesOnly($selected_cat, $price, $lat_user, $long_user, $distance = null, $music = null)
     {
         $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
 
         $all_POI = array();
         foreach ($type_array as $cat) {
 
-            $result = $this->queryPlacesOnTriplestore($price, $cat, $music, $parent);
+            $result = $this->queryPlacesOnTriplestore($price, $cat, $music);
 
             foreach ($result as $place) {
                 if ($distance != null) {
