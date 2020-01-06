@@ -7,9 +7,10 @@ class TstOperation
     private $gs;
     private $endpoint;
     private $math;
-    private $priceArray = array(0 => 'su:Barato', 1 => 'su:Moderado', 2 => 'su:Caro', 3 => 'su:MuyCaro');
+    private $price_array = array(0 => 'su:Barato', 1 => 'su:Moderado', 2 => 'su:Caro', 3 => 'su:MuyCaro');
+    private $data;
 
-    function __construct()
+    function __construct($data)
     {
         require_once dirname(__FILE__) . '/Constants.php';
         require '../vendor/autoload.php';
@@ -30,6 +31,7 @@ class TstOperation
             "http://localhost:3030/repositories/SSRSIP/statements");
 
         $this->math = new Math();
+        $this->data = $data;
     }
 
 
@@ -280,220 +282,219 @@ class TstOperation
         return $points;
     }
 
-    function search($selected_cat, $price, $price_class, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null) {
-        $data = $this->get("data");
+    /**
+     * Método para buscar sitios
+     * @param $selected_cat
+     * @param $price
+     * @param $lat_user
+     * @param $long_user
+     * @param $id
+     * @param null $distance
+     * @param bool $preferences
+     * @param $music
+     * @return array
+     */
+    function search($selected_cat, $price, $price_class, $music, $lat_user, $long_user, $id, $distance = null)
+    {
+        // 1era búsqueda, 1era yimilitud
+         $result = $this->searchPlacesOnly($selected_cat, $price, $lat_user, $long_user, $distance, $music);
+         $res_count = count($result);
+         $result = $this->similarityPlaces($result, $this->data, $price_class, $res_count, 5);
 
-        // 1era búsqueda, 1era y 2da similitud
-        $result = $this->searchPlacesOnly($selected_cat, $price, $music, $lat_user, $long_user, $distance);
+        // 2da búsqueda
+        if (count($result) < 2) {
+            $temp = $this->searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance, true, $music);
+            if (!empty($temp)) {
+                $temp = $this->similarityPlaces($temp, $this->data, $price_class, $res_count, 4);
+                $diff = array_udiff($temp, $result, "self::compareArraysById");
+                if (!empty($diff)) $result = array_merge($result, $diff);
+            }
+        }
+
+        // categorias extendidas
+        if (count($result) < 2) {
+            $temp1 = $this->searchPlacesOnly($selected_cat, $price, $lat_user, $long_user, $distance, $music);
+            $temp2 = $this->searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance, false, $music);
+            if (!empty($temp1) && !empty($temp2)) {
+                $diff = array_udiff($temp2, $temp1, "self::compareArraysById");
+                if (!empty($diff)) $result = $this->mergeDiffWithArray($temp1, $result, 3);
+            }
+        }
+
+        // 3ra búsqueda
+        foreach ($this->price_array as $new_price) {
+            $new_price = $this->findNewPrice($new_price);
+
+            // nuevo precio
+            $temp = $this->searchPlacesOnly($selected_cat, $new_price, $lat_user, $long_user, $distance, $music);
+            if (!empty($temp))
+                $result = $this->mergeDiffWithArray($temp, $result, 2);
+
+            // nuevo precio e inverso de musica
+            if (count($result) < 2) {
+                $temp = $this->searchPlacesOnly($selected_cat, $new_price, $lat_user, $long_user, $distance, !$music);
+                if (!empty($temp))
+                    $result = $this->mergeDiffWithArray($temp, $result, 2);
+            }
+
+            if (count($result) < 2) {
+                $temp = $this->searchPlacesOnly($selected_cat, $new_price, $lat_user, $long_user, null, !$music);
+                if (!empty($temp))
+                    $result = $this->mergeDiffWithArray($temp, $result, 2);
+            }
+
+            if (count($result) > 3) break;
+        }
+
+        foreach ($this->price_array as $new_price) {
+            $temp1 = $this->searchPlacesOnly($selected_cat, $new_price, $lat_user, $long_user, null, null);
+            $temp2 = $this->searchWithExtendedCats($selected_cat, $new_price, $lat_user, $long_user, $id, null, false, null);
+
+            if (!empty($temp1) && !empty($temp2)) {
+                $diff = array_udiff($temp2, $temp1, "self::compareArraysById");
+                if (!empty($diff)) $result = $this->mergeDiffWithArray($temp1, $result, 1);
+            } elseif (empty($temp1)) {
+                $result = $this->mergeDiffWithArray($temp2, $result, 1);
+            } elseif (empty($temp2)) {
+                $result = $this->mergeDiffWithArray($temp1, $result, 1);
+            }
+            if (count($result) > 3) break;
+        }
+
+        if (empty($result)) {
+
+            $temp = $this->getVisitedPlacesByUser($id);
+            $temp = array_slice($temp, 0, 3);
+            if (!empty($temp))
+                $result = $this->mergeDiffWithArray($temp, $result, 0);
+        }
+        usort($result, "self::compareArraysBySimilarity");
+
+        return $result;
+    }
+
+    function similarityPlaces($places, $data, $price_class, $res_count, $max_similarity)
+    {
         $similar = 0;
-        foreach ($result as &$place) {
+        foreach ($places as &$place) {
             $comments = $place['comentarios'];
             foreach ($comments as $comment) {
                 $prediction = $data->classification($comment);
                 if ($prediction == $price_class) $similar++;
             }
-            $percent = 100 * $similar / count($result);
-            if ($percent > 60)  {
-                $place['similitud'] = 5;
+            $percent = 100 * $similar / $res_count;
+            if ($percent > 60) {
+                $place['similitud'] = $max_similarity;
             } else {
-                $place['similitud'] = 4;
+                $place['similitud'] = $max_similarity - 1;
             }
         }
-
-        // 2da búsqueda
-        if (count($result) < 2) {
-            $temp = $this->searchWithExtendedCats($selected_cat, $price, $music, $lat_user, $long_user, $distance);
-            if (!empty($temp))
-                $result = $this->mergeDiffWithArray($temp, $result, 3);
-        }
-
-        // 3ra búsqueda
-        $nuevo_precio = $this->findNewPrice($price);
-        while ($nuevo_precio != $price && ($similar < 3)) {
-            $temp = $this->searchPlaces($selected_cat, $nuevo_precio, $music, $lat_user, $long_user,true, $distance, null);
-            if (!empty($temp))
-                $result = $this->mergeDiffWithArray($temp, $result, 4);
-            $nuevo_precio = $this->findNewPrice($nuevo_precio);
-        }
-
-        if (count($result) < 3) {
-            $temp = $this->searchPlaces($selected_cat, $nuevo_precio, $music, $lat_user, $long_user, true, $distance, null);
-            if (!empty($temp))
-                $result = $this->mergeDiffWithArray($temp, $result, 3);
-        }
-
-        if (count($result) < 3) {
-            $temp = $this->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null, null);
-            if (!empty($temp))
-                $result = mergeDiffWithArray($temp, $result, 2);
-        }
-
-        $nuevo_precio = $this->findNewPrice($price);
-
-        while ($nuevo_precio != $price || (count($result) > 4 && count($result) < 7)) {
-            $temp = $this->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, null, null);
-            if (!empty($temp))
-                $result = mergeDiffWithArray($temp, $result, 1);
-            $nuevo_precio = $this->findNewPrice($nuevo_precio);
-        }
-
-        if (count($result) < 3) {
-            $temp = $this->getVisitedPlacesByUser($id);
-            $temp = array_slice($temp, 0, 3);
-            if (!empty($temp))
-                $result = mergeDiffWithArray($temp, $result, 0);
-        }
-
-        return $result;
+        return $places;
     }
 
-    /**
-     * Método para buscar sitios
-     * @param $selected_cat
-     * @param $price
-     * @param $music
-     * @param $lat_user
-     * @param $long_user
-     * @param bool $root_cat
-     * @param null $distance
-     * @param null $visited_cat
-     * @return array
-     */
-    function searchPlaces($selected_cat, $price, $music, $lat_user, $long_user, $root_cat = false, $distance = null, $visited_cat = null)
+
+    function searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance = null, $preferences = false, $music = null)
     {
-
-        /*if ($root_cat == false) {
-            echo '<pre>' . var_export($visited_cat, true) . '</pre>';
-        }*/
-        $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
-        $all_POI = array();
-        foreach ($type_array as $cat) {
-
-            $result = $this->queryPlacesOnTriplestore($price, $cat, $music);
-            foreach ($result as $place) {
-                if ($distance != null) {
-                    $distanceFromPlace = $this->compareDistance($this->calculateDistance($lat_user, $long_user, $place->latitud->getValue(), $place->longitud->getValue()));
-                    if ($distance != $distanceFromPlace) continue;
-                }
-
-                $sujeto = $place->sujeto->shorten();
-                $temp_id = $place->id->getValue();
-
-                $temp = array();
-                $temp['id'] = $temp_id;
-                $temp['medi'] = $place->medi->localName();
-                $temp['latitud'] = $place->latitud->getValue();
-                $temp['longitud'] = $place->longitud->getValue();
-                $temp['direccion'] = $place->direccion->getValue();
-                $temp['musica'] = $music;
-
-                $temp_props = $this->getPropertiesJSON($sujeto);
-                $resultado = array_merge($temp, $temp_props);
-
-                array_push($all_POI, $resultado);
-            }
-        }
-
-        if (count($all_POI) < 3) {
-            $children_cat = $this->searchChildCat($selected_cat);
-            if ($visited_cat) {
-                $pos = array_search($visited_cat, $children_cat);
-                unset($children_cat[$pos]);
-            }
-            if (!empty($children_cat)) {
-                $a = array();
-                foreach ($children_cat as $cat) {
-                    $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, $distance, null);
-                    if (!empty($temp)) $a = array_merge($a, $temp);
-                }
-                if (!empty($a) && !empty($all_POI)) {
-                    $diff = array_udiff($a, $all_POI, "self::compareArraysById");
-                    if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
-                } else if (!empty($a) && empty($all_POI)) {
-                    $all_POI = array_merge($all_POI, $a);
-                }
-            }
-        }
-
-        if (count($all_POI) < 3 && $root_cat) {
-            $parent_cat = $this->searchParentCat($selected_cat);
-
-            if (!empty($parent_cat)) {
-                $b = array();
-                foreach ($parent_cat as $cat) {
-                    $temp = $this->searchPlaces($cat, $price, $music, $lat_user, $long_user, false, $distance, $selected_cat);
-                    if (!empty($temp)) $b = array_merge($b, $temp);
-                }
-                if (!empty($b) && !empty($all_POI)) {
-                    $diff = array_udiff($b, $all_POI, "self::compareArraysById");
-                    if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
-                } else if (!empty($b) && empty($all_POI)) {
-                    $all_POI = array_merge($all_POI, $b);
-                }
-            }
-        }
-
-        // echo '<pre>' . var_export($all_POI, true) . '</pre>';
-        return $all_POI;
-    }
-
-    /*if ($root_cat == false) {
-                echo '<pre>' . var_export($visited_cat, true) . '</pre>';
-            }*/ // echo '<pre>' . var_export($all_POI, true) . '</pre>';
-
-
-    function searchWithExtendedCats($selected_cat, $price, $music, $lat_user, $long_user, $distance = null) {
         $result = array();
-        $temp1 = $this->searchWithChildCat($selected_cat, $price, $music, $lat_user, $long_user, $distance);
-        $temp2 = $this->searchWithParentCat($selected_cat, $price, $music, $lat_user, $long_user, $distance);
+        $temp1 = $this->searchWithChildCat($selected_cat, $price, $lat_user, $long_user, $id, $preferences, $distance, $music);
+        $temp2 = $this->searchWithParentCat($selected_cat, $price, $lat_user, $long_user, $id, $preferences, $distance, $music);
+
         if (!empty($temp1) && !empty($temp2)) {
             $diff = array_udiff($temp2, $temp1, "self::compareArraysById");
             if (!empty($diff)) $result = array_merge($temp1, $diff);
+        } elseif (empty($temp1)) {
+            $result = array_merge($result, $temp2);
+        } elseif (empty($temp2)) {
+            $result = array_merge($result, $temp1);
         }
         return $result;
     }
 
-    // echo '<pre>' . var_export($all_POI, true) . '</pre>';
-    function searchWithChildCat($selected_cat, $price, $music, $lat_user, $long_user, $distance = null, $visited_cat = null) {
-        $children_cat = $this->searchChildCat($selected_cat);
+    function searchWithChildCat($selected_cat, $price, $lat_user, $long_user, $id, $preferences, $distance = null, $music = null, $visited_cat = null)
+    {
+        $children_cat = $this->searchChildCat($selected_cat, $id, $preferences);
         if ($visited_cat) {
             $pos = array_search($visited_cat, $children_cat);
             unset($children_cat[$pos]);
         }
+
         $a = array();
         if (!empty($children_cat)) {
             foreach ($children_cat as $cat) {
-                $temp = $this->searchPlacesOnly($cat, $price, $music, $lat_user, $long_user, $distance);
-                if (!empty($temp)) $a = array_merge($a, $temp);
+                $temp = $this->searchPlacesOnly($cat, $price, $lat_user, $long_user, $distance, $music, $selected_cat);
+                if (!empty($temp))
+                    $a = array_merge($a, $temp);
             }
-/*            if (!empty($a) && !empty($all_POI)) {
-                $diff = array_udiff($a, $all_POI, "self::compareArraysById");
-                if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
-            } else if (!empty($a) && empty($all_POI)) {
-                $all_POI = array_merge($all_POI, $a);
-            }*/
         }
-
         return $a;
     }
 
-    function searchWithParentCat($initial_cat, $price, $music, $lat_user, $long_user, $distance = null) {
-        $parent_cat = $this->searchParentCat($initial_cat);
+    function searchWithParentCat($initial_cat, $price, $lat_user, $long_user, $id, $preferences, $distance = null, $music = null)
+    {
+        $parent_cat = $this->searchParentCat($initial_cat, $id, $preferences);
         $b = array();
         if (!empty($parent_cat)) {
-            foreach ($parent_cat as $cat) {
-                $temp = $this->searchWithChildCat($cat, $price, $music, $lat_user, $long_user, $distance, $initial_cat);
-                if (!empty($temp)) $b = array_merge($b, $temp);
-            }
-           /* if (!empty($b) && !empty($all_POI)) {
-                $diff = array_udiff($b, $all_POI, "self::compareArraysById");
-                if (!empty($diff)) $all_POI = array_merge($all_POI, $diff);
-            } else if (!empty($b) && empty($all_POI)) {
-                $all_POI = array_merge($all_POI, $b);
-            }*/
-        }
 
+            foreach ($parent_cat as $cat) {
+                $temp1 = $this->searchPlacesOnly($cat, $price, $lat_user, $long_user, $distance, $music);
+                $temp2 = $this->searchWithChildCat($cat, $price, $lat_user, $long_user, $id, $preferences, $distance, $music, $initial_cat);
+
+                if (!empty($temp1) && !empty($temp2)) {
+                    $diff = array_udiff($temp2, $temp1, "self::compareArraysById");
+                    if (!empty($diff)) $b = array_merge($temp1, $diff);
+                } elseif (empty($temp1)) {
+                    $b = array_merge($b, $temp2);
+                } elseif (empty($temp2)) {
+                    $b = array_merge($b, $temp1);
+                }
+            }
+        }
         return $b;
+    }
+
+    /**
+     * Método que busca sitios en la triplestore
+     * @param $price
+     * @param $type
+     * @param $music
+     * @return object
+     */
+    function queryPlacesOnTriplestore($price, $type, $music, $parent = null)
+    {
+        $query = "SELECT ?sujeto ?id ?medi ?latitud ?longitud ?direccion
+        WHERE {
+            ?sujeto su:idSitio ?id .
+            ?sujeto a [
+                a owl:Restriction ;
+                owl:onProperty su:tieneUnValorMEDI ;
+                owl:someValuesFrom ?medi
+            ] .
+            ?sujeto a [
+                a owl:Restriction ;
+                owl:onProperty su:tienePrecio ;
+                owl:someValuesFrom " . $price . "
+            ] .
+            ?sujeto su:tieneCategoria " . $type . " .
+            ?sujeto su:tienePropiedad/su:direccionSitio ?direccion . \n";
+
+        if (!is_null($music))
+            $query .= "?sujeto su:tienePropiedad/su:musica " . ($music ? 'true' : 'false') . " . \n";
+        $query .= "?sujeto su:tienePropiedad/su:latitud ?latitud .
+            ?sujeto su:tienePropiedad/su:longitud ?longitud .
+            }";
+
+
+        $result = $this->endpoint->query($query);
+        /*if ($parent == "su:Restaurante_japones" && $type == "su:Restaurante_de_sushi" && $price == "su:Moderado") {
+            echo '<pre>' . var_export($type, true) . '</pre>';
+            echo '<pre>' . var_export($type, true) . '</pre>';
+            echo '<pre>' . var_export($music, true) . '</pre>';
+            echo '<pre>' . var_export($price, true) . '</pre>';
+            echo '<pre>' . var_export($query, true) . '</pre>';
+            echo '<pre>' . var_export($result, true) . '</pre>';
+
+        }*/
+        return $result;
     }
 
     /**
@@ -503,18 +504,18 @@ class TstOperation
      * @param $music
      * @param $lat_user
      * @param $long_user
-     * @param bool $root_cat
      * @param null $distance
-     * @param null $visited_cat
      * @return array
      */
-    function searchPlacesOnly($selected_cat, $price, $music, $lat_user, $long_user, $distance = null)
+    function searchPlacesOnly($selected_cat, $price, $lat_user, $long_user, $distance = null, $music = null, $parent = null)
     {
         $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
+
         $all_POI = array();
         foreach ($type_array as $cat) {
 
-            $result = $this->queryPlacesOnTriplestore($price, $cat, $music);
+            $result = $this->queryPlacesOnTriplestore($price, $cat, $music, $parent);
+
             foreach ($result as $place) {
                 if ($distance != null) {
                     $distanceFromPlace = $this->compareDistance(
@@ -523,6 +524,7 @@ class TstOperation
                     if ($distance != $distanceFromPlace) continue;
                 }
 
+
                 $sujeto = $place->sujeto->shorten();
                 $temp_id = $place->id->getValue();
 
@@ -541,11 +543,22 @@ class TstOperation
             }
         }
 
+        /*if ($parent == "su:Restaurante_japones" && $cat == "su:Restaurante_de_sushi" && $price == "su:Moderado") {
+            echo '<pre>final searchPlacesOnly con Padre restaurante' . var_export($cat, true) . '</pre>';
+            echo '<pre>' . var_export($cat, true) . '</pre>';
+            echo '<pre>' . var_export($music, true) . '</pre>';
+            echo '<pre>' . var_export($price, true) . '</pre>';
+            echo '<pre>' . var_export($price, true) . '</pre>';
+            // echo '<pre>' . var_export($all_POI, true) . '</pre>';
+
+        }*/
+
         return $all_POI;
     }
 
-    function mergeDiffWithArray($temp, $result, $similitud) {
-        $diff = array_udiff($temp, $result, "compareArraysById");
+    function mergeDiffWithArray($temp, $result, $similitud)
+    {
+        $diff = array_udiff($temp, $result, "self::compareArraysById");
         if (!empty($diff)) {
             foreach ($diff as &$place) $place['similitud'] = $similitud;
             return array_merge($result, $diff);
@@ -651,7 +664,8 @@ class TstOperation
      * @param $p
      * @return mixed
      */
-    function checkLikedPlaceByUser($s, $p) {
+    function checkLikedPlaceByUser($s, $p)
+    {
         $liked = $this->endpoint->query("
             ASK { " . $s . " su:leHaGustado " . $p . " }");
         return $liked->getBoolean();
@@ -665,7 +679,6 @@ class TstOperation
     function getVisitedPlacesByUser($id)
     {
         $temp_id = intval($id);
-
         $visited = $this->endpoint->query("
         SELECT ?sujeto ?sitio
         WHERE {
@@ -675,47 +688,16 @@ class TstOperation
         $temp = array();
         foreach ($visited as $place) {
             $sitio_src = $place->sitio->shorten();
-
-            // Propiedades
             $temp_2 = $this->getBasePropsPlace($sitio_src);
             $temp_props = $this->getPropertiesJSON($sitio_src);
             $resultado = array_merge($temp_2, $temp_props);
 
             array_push($temp, $resultado);
         }
+
         return $temp;
     }
 
-    /**
-     * Método que busca sitios en la triplestore
-     * @param $price
-     * @param $type
-     * @param $music
-     * @return object
-     */
-    function queryPlacesOnTriplestore($price, $type, $music)
-    {
-        $result = $this->endpoint->query("SELECT DISTINCT?sujeto ?id ?medi ?latitud ?longitud ?direccion
-        WHERE {
-            ?sujeto su:idSitio ?id .
-            ?sujeto a [
-                a owl:Restriction ;
-                owl:onProperty su:tieneUnValorMEDI ;
-                owl:someValuesFrom ?medi
-            ] .
-            ?sujeto a [
-                a owl:Restriction ;
-                owl:onProperty su:tienePrecio ;
-                owl:someValuesFrom " . $price . "
-            ] .
-            ?sujeto su:tienePropiedad/su:categoria/a " . $type . " .
-            ?sujeto su:tienePropiedad/su:direccionSitio ?direccion .
-            ?sujeto su:tienePropiedad/su:musica " . ($music ? 'true' : 'false') . " .
-            ?sujeto su:tienePropiedad/su:latitud ?latitud .
-            ?sujeto su:tienePropiedad/su:longitud ?longitud .
-        }");
-        return $result;
-    }
 
     /**
      * Método para obtener propiedades del sitio (id, latitud, longitud)
@@ -791,21 +773,23 @@ class TstOperation
      */
     function findNewPrice($previousPrice)
     {
-        $pos = array_search($previousPrice, $this->priceArray);
+        $pos = array_search($previousPrice, $this->price_array);
         $module = 4;
-        $r = ($pos - 1) % $module;
-        if ($r < 0) {
+        $r = ($pos + 1) % $module;
+        /*if ($r < 0) {
             $r += abs($module);
-        }
-        return $this->priceArray[$r];
+        }*/
+        return $this->price_array[$r];
     }
 
     /**
      * Método para buscar la categoría padre de una categoría
      * @param $type
+     * @param $id
+     * @param bool $preferences
      * @return array
      */
-    function searchParentCat($type)
+    function searchParentCat($type, $id, $preferences = false)
     {
         $result = $this->endpoint->query("
         SELECT ?sup ?mid ?distance
@@ -821,8 +805,8 @@ class TstOperation
                 GROUP BY ?sup 
                 ORDER BY ?sup 
             }
-            FILTER (?distance < 2)
-        }");
+            FILTER (?distance < 2)\n" .
+            ($preferences ? "FILTER EXISTS { su:user_" . strval($id) . " su:prefiereCategoria ?sup .}\n" : "\n") . "}");
 
         $array = array();
         foreach ($result as $cat) {
@@ -835,9 +819,11 @@ class TstOperation
     /**
      * Método para buscar las categorías hijos de un categoría
      * @param $type
+     * @param $id
+     * @param bool $preferences
      * @return array
      */
-    function searchChildCat($type)
+    function searchChildCat($type, $id, $preferences = false)
     {
         $result = $this->endpoint->query("
         SELECT ?sub
@@ -852,14 +838,15 @@ class TstOperation
             }
             GROUP BY ?sub 
         }
-        FILTER( ?distance < 2 )
-        } ");
+        FILTER( ?distance < 2 )\n" .
+            ($preferences ? "FILTER EXISTS { su:user_" . strval($id) . " su:prefiereCategoria ?sup .}\n" : "\n") . "}");
 
         $array = array();
         foreach ($result as $cat) {
             if ($cat != null && isset($cat->sub))
                 array_push($array, $cat->sub->shorten());
         }
+        // echo '<pre>' . var_export($array , true) . '</pre>';
         return $array;
     }
 
@@ -945,7 +932,7 @@ class TstOperation
             $recursos["usuario_sitio"] . " su:sitioVisitado " . $recursos["sitio"] . " .\n" .
             $recursos["usuario_sitio"] . " su:daCalificacionPrecio " . $recursos["usuario_calif"] . " .\n" .
             $recursos["usuario_sitio"] . " su:dejaComentario " . $recursos["usuario_comen"] . " .\n" .
-            ($liked ? $recursos["usuario_sitio"] . " su:leGusto " . $recursos["sitio"] . " .\n" : "\n" ) .
+            ($liked ? $recursos["usuario_sitio"] . " su:leGusto " . $recursos["sitio"] . " .\n" : "\n") .
 
             $recursos["usuario_calif"] . " a su:RelacionUsuarioCalificacionPrecio .\n" .
             $recursos["usuario_calif"] . " su:idUsuarioCalif " . $id_r2 . " .\n" .
@@ -1002,6 +989,7 @@ class TstOperation
      * Método para revisar si existe ya un ID en la ontología
      *
      * @param $id
+     * @param $type
      * @return bool
      */
     function checkIDExist($id, $type)
@@ -1157,12 +1145,6 @@ class TstOperation
             $temp_3['proviene'] = $rating->base->localName();
             array_push($ratings, $temp_3);
         }
-
-        $as = "OPTIONAL { 
-        ?usuario su:visito ?v .
-        ?v su:sitioVisitado ?sujeto .
-        ?usuario su:idUsuario 768178 .
-    }";
         return $ratings;
     }
 
@@ -1287,12 +1269,12 @@ class TstOperation
         return strrpos($haystack, $needle) ? substr($haystack, 0, strrpos($haystack, $needle) + $trail) : false;
     }
 
-    public static function compareArraysById($obj_a, $obj_b)
+    function compareArraysById($obj_a, $obj_b)
     {
         return ($obj_a["id"] - $obj_b["id"]);
     }
 
-    public static function compareArraysBySimilarity($obj_a, $obj_b)
+    function compareArraysBySimilarity($obj_a, $obj_b)
     {
         return ($obj_a["similitud"] - $obj_b["similitud"]);
     }

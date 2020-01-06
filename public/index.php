@@ -184,9 +184,10 @@ $app->post('/search', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('tipo', 'precio', 'distancia'));
     if (!$params["error"]) {
         $data = $this->get("data");
-        $tst = new TstOperation();
-
+        $tst = new TstOperation($data);
         $request_data = $request->getParsedBody();
+
+        $id = strval($request_data['id']);
         $tipo = "su:" . $request_data['tipo'];
         $temp_precio = $request_data['precio'];
         $clase_precio = $data->classification($temp_precio);
@@ -194,7 +195,7 @@ $app->post('/search', function (Request $request, Response $response) {
         $distancia = $request_data['distancia'];
         $musica = $request_data['musica'] === 'true' ? true: false;
 
-        $result = $tst->search($tipo, $precio, $clase_precio, $musica, 19.43422, -99.14084, true, $distancia, null);
+        $result = $tst->search($tipo, $precio, $clase_precio, $musica, 19.43422, -99.14084, $id, $distancia);
         // $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia, null);
 
         // echo '<pre>' . var_export($result, true) . '</pre>';
@@ -250,7 +251,7 @@ $app->post('/search', function (Request $request, Response $response) {
                 $result = mergeDiffWithArray($temp, $result, 0);
         }*/
 
-        usort($result, "compareArraysBySimilarity");
+        // usort($result, "compareArraysBySimilarity");
 
         $response_data = array();
         if (!empty($result)) {
@@ -406,7 +407,7 @@ $app->get('/nlp', function (Request $request, Response $response) {
 
 
 
-function compareArraysById($obj_a, $obj_b)
+/*function compareArraysById($obj_a, $obj_b)
 {
     return ($obj_a["id"] - $obj_b["id"]);
 }
@@ -414,7 +415,7 @@ function compareArraysById($obj_a, $obj_b)
 function compareArraysBySimilarity($obj_a, $obj_b)
 {
     return ($obj_b["similitud"] - $obj_a["similitud"]);
-}
+}*/
 /**
  * Checa que los parámetros no estén vacíos
  *
