@@ -296,12 +296,10 @@ class TstOperation
      */
     function search($selected_cat, $price, $price_class, $music, $lat_user, $long_user, $id, $distance = null)
     {
-        // 1era búsqueda, 1era yimilitud
-         $result = $this->searchPlacesOnly($selected_cat, $price, $lat_user, $long_user, $distance, $music);
+         $result = $this->searchPlaces($selected_cat, $price, $lat_user, $long_user, $distance, $music);
          $res_count = count($result);
          $result = $this->similarityPlaces($result, $this->data, $price_class, $res_count, 5);
 
-        // 2da búsqueda
         if (count($result) < 2) {
             $temp = $this->searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance, true, $music);
             if (!empty($temp)) {
@@ -311,43 +309,38 @@ class TstOperation
             }
         }
 
-        // categorias extendidas
         if (count($result) < 2) {
-            $temp1 = $this->searchPlacesOnly($selected_cat, $price, $lat_user, $long_user, $distance, $music);
-            $temp2 = $this->searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance, false, $music);
-            if (!empty($temp1) && !empty($temp2)) {
-                $diff = array_udiff($temp2, $temp1, "self::compareArraysById");
-                if (!empty($diff)) $result = $this->mergeDiffWithArray($temp1, $result, 3);
+            $temp = $this->searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance, false, $music);
+            if (!empty($temp1)) {
+                $diff = array_udiff($temp, $result, "self::compareArraysById");
+                if (!empty($diff)) $result = $this->mergeDiffWithArray($diff, $result, 3);
             }
         }
 
-        // 3ra búsqueda
         foreach ($this->price_array as $new_price) {
             $new_price = $this->findNewPrice($new_price);
 
-            // nuevo precio
-            $temp = $this->searchPlacesOnly($selected_cat, $new_price, $lat_user, $long_user, $distance, $music);
+            $temp = $this->searchPlaces($selected_cat, $new_price, $lat_user, $long_user, $distance, $music);
             if (!empty($temp))
                 $result = $this->mergeDiffWithArray($temp, $result, 2);
 
-            // nuevo precio e inverso de musica
             if (count($result) < 2) {
-                $temp = $this->searchPlacesOnly($selected_cat, $new_price, $lat_user, $long_user, $distance, !$music);
+                $temp = $this->searchPlaces($selected_cat, $new_price, $lat_user, $long_user, $distance, !$music);
                 if (!empty($temp))
                     $result = $this->mergeDiffWithArray($temp, $result, 2);
             }
 
             if (count($result) < 2) {
-                $temp = $this->searchPlacesOnly($selected_cat, $new_price, $lat_user, $long_user, null, !$music);
+                $temp = $this->searchPlaces($selected_cat, $new_price, $lat_user, $long_user, null, !$music);
                 if (!empty($temp))
                     $result = $this->mergeDiffWithArray($temp, $result, 2);
             }
 
-            if (count($result) > 3) break;
+            if (count($result) > 2) break;
         }
 
         foreach ($this->price_array as $new_price) {
-            $temp1 = $this->searchPlacesOnly($selected_cat, $new_price, $lat_user, $long_user, null, null);
+            $temp1 = $this->searchPlaces($selected_cat, $new_price, $lat_user, $long_user, null, null);
             $temp2 = $this->searchWithExtendedCats($selected_cat, $new_price, $lat_user, $long_user, $id, null, false, null);
 
             if (!empty($temp1) && !empty($temp2)) {
@@ -445,7 +438,7 @@ class TstOperation
         $a = array();
         if (!empty($children_cat)) {
             foreach ($children_cat as $cat) {
-                $temp = $this->searchPlacesOnly($cat, $price, $lat_user, $long_user, $distance, $music);
+                $temp = $this->searchPlaces($cat, $price, $lat_user, $long_user, $distance, $music);
                 if (!empty($temp))
                     $a = array_merge($a, $temp);
             }
@@ -465,24 +458,19 @@ class TstOperation
      * @param null $music
      * @return array
      */
-    function searchWithParentCat($initial_cat, $price, $lat_user, $long_user, $id, $preferences, $distance = null, $music = null)
-    {
+    function searchWithParentCat($initial_cat, $price, $lat_user, $long_user, $id, $preferences, $distance = null, $music = null){
         $parent_cat = $this->searchParentCat($initial_cat, $id, $preferences);
         $b = array();
         if (!empty($parent_cat)) {
-
             foreach ($parent_cat as $cat) {
-                $temp1 = $this->searchPlacesOnly($cat, $price, $lat_user, $long_user, $distance, $music);
+                $temp1 = $this->searchPlaces($cat, $price, $lat_user, $long_user, $distance, $music);
                 $temp2 = $this->searchWithChildCat($cat, $price, $lat_user, $long_user, $id, $preferences, $distance, $music, $initial_cat);
 
                 if (!empty($temp1) && !empty($temp2)) {
                     $diff = array_udiff($temp2, $temp1, "self::compareArraysById");
                     if (!empty($diff)) $b = array_merge($temp1, $diff);
-                } elseif (empty($temp1)) {
-                    $b = array_merge($b, $temp2);
-                } elseif (empty($temp2)) {
-                    $b = array_merge($b, $temp1);
-                }
+                } elseif (empty($temp1)) { $b = array_merge($b, $temp2);
+                } elseif (empty($temp2)) {$b = array_merge($b, $temp1); }
             }
         }
         return $b;
@@ -533,7 +521,7 @@ class TstOperation
      * @param null $distance
      * @return array
      */
-    function searchPlacesOnly($selected_cat, $price, $lat_user, $long_user, $distance = null, $music = null)
+    function searchPlaces($selected_cat, $price, $lat_user, $long_user, $distance = null, $music = null)
     {
         $type_array = is_array($selected_cat) ? $selected_cat : (array)$selected_cat;
 
@@ -861,7 +849,6 @@ class TstOperation
             if ($cat != null && isset($cat->sub))
                 array_push($array, $cat->sub->shorten());
         }
-        // echo '<pre>' . var_export($array , true) . '</pre>';
         return $array;
     }
 
