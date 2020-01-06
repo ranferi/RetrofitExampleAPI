@@ -196,62 +196,6 @@ $app->post('/search', function (Request $request, Response $response) {
         $musica = $request_data['musica'] === 'true' ? true: false;
 
         $result = $tst->search($tipo, $precio, $clase_precio, $musica, 19.43422, -99.14084, $id, $distancia);
-        // $result = $tst->searchPlaces($tipo, $precio, $musica, 19.43422, -99.14084, true, $distancia, null);
-
-        // echo '<pre>' . var_export($result, true) . '</pre>';
-        /*$similar = 0;
-        foreach ($result as &$place) {
-            $comments = $place['comentarios'];
-            foreach ($comments as $comment) {
-                $prediction = $data->classification($comment);
-                if ($prediction == $clase_precio) $similar++;
-            }
-            $percent = 100 * $similar / count($result);
-            if ($percent > 60)  {
-                $place['similitud'] = 5;
-            } else {
-                $place['similitud'] = 4;
-            }
-        }
-
-        $nuevo_precio = $tst->findNewPrice($precio);
-
-        while ($nuevo_precio != $precio && ($similar < 3)) {
-            $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, $distancia, null);
-            if (!empty($temp))
-                $result = mergeDiffWithArray($temp, $result, 4);
-            $nuevo_precio = $tst->findNewPrice($nuevo_precio);
-        }
-
-        if (count($result) < 3) {
-            $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, $distancia, null);
-            if (!empty($temp))
-                $result = mergeDiffWithArray($temp, $result, 3);
-        }
-
-        if (count($result) < 3) {
-            $temp = $tst->searchPlaces($tipo, $nuevo_precio, $musica, 19.43422, -99.14084, true, null, null);
-            if (!empty($temp))
-                $result = mergeDiffWithArray($temp, $result, 2);
-        }
-
-        $nuevo_precio = $tst->findNewPrice($precio);
-
-        while ($nuevo_precio != $precio || (count($result) > 4 && count($result) < 7)) {
-            $temp = $tst->searchPlaces($tipo, $nuevo_precio, !$musica, 19.43422, -99.14084, true, null, null);
-            if (!empty($temp))
-                $result = mergeDiffWithArray($temp, $result, 1);
-            $nuevo_precio = $tst->findNewPrice($nuevo_precio);
-        }
-
-        if (count($result) < 3) {
-            $temp = $tst->getVisitedPlacesByUser($id);
-            $temp = array_slice($temp, 0, 3);
-            if (!empty($temp))
-                $result = mergeDiffWithArray($temp, $result, 0);
-        }*/
-
-        // usort($result, "compareArraysBySimilarity");
 
         $response_data = array();
         if (!empty($result)) {

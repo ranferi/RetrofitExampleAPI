@@ -392,7 +392,18 @@ class TstOperation
         return $places;
     }
 
-
+    /**
+     * Metodo auxiliar para busqueda usando categorias hijo y padre de una categoria inicial
+     * @param $selected_cat
+     * @param $price
+     * @param $lat_user
+     * @param $long_user
+     * @param $id
+     * @param null $distance
+     * @param bool $preferences
+     * @param null $music
+     * @return array
+     */
     function searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance = null, $preferences = false, $music = null)
     {
         $result = array();
@@ -410,6 +421,19 @@ class TstOperation
         return $result;
     }
 
+    /**
+     * Busqueda de sitios con categorias hijo
+     * @param $selected_cat
+     * @param $price
+     * @param $lat_user
+     * @param $long_user
+     * @param $id
+     * @param $preferences
+     * @param null $distance
+     * @param null $music
+     * @param null $visited_cat
+     * @return array
+     */
     function searchWithChildCat($selected_cat, $price, $lat_user, $long_user, $id, $preferences, $distance = null, $music = null, $visited_cat = null)
     {
         $children_cat = $this->searchChildCat($selected_cat, $id, $preferences);
@@ -429,6 +453,18 @@ class TstOperation
         return $a;
     }
 
+    /**
+     * Busqueda de sitios con categoria padre
+     * @param $initial_cat
+     * @param $price
+     * @param $lat_user
+     * @param $long_user
+     * @param $id
+     * @param $preferences
+     * @param null $distance
+     * @param null $music
+     * @return array
+     */
     function searchWithParentCat($initial_cat, $price, $lat_user, $long_user, $id, $preferences, $distance = null, $music = null)
     {
         $parent_cat = $this->searchParentCat($initial_cat, $id, $preferences);
@@ -480,20 +516,10 @@ class TstOperation
         if (!is_null($music))
             $query .= "?sujeto su:tienePropiedad/su:musica " . ($music ? 'true' : 'false') . " . \n";
         $query .= "?sujeto su:tienePropiedad/su:latitud ?latitud .
-            ?sujeto su:tienePropiedad/su:longitud ?longitud .
-            }";
-
+                   ?sujeto su:tienePropiedad/su:longitud ?longitud .
+                   }";
 
         $result = $this->endpoint->query($query);
-        /*if ($parent == "su:Restaurante_japones" && $type == "su:Restaurante_de_sushi" && $price == "su:Moderado") {
-            echo '<pre>' . var_export($type, true) . '</pre>';
-            echo '<pre>' . var_export($type, true) . '</pre>';
-            echo '<pre>' . var_export($music, true) . '</pre>';
-            echo '<pre>' . var_export($price, true) . '</pre>';
-            echo '<pre>' . var_export($query, true) . '</pre>';
-            echo '<pre>' . var_export($result, true) . '</pre>';
-
-        }*/
         return $result;
     }
 
@@ -542,16 +568,6 @@ class TstOperation
                 array_push($all_POI, $resultado);
             }
         }
-
-        /*if ($parent == "su:Restaurante_japones" && $cat == "su:Restaurante_de_sushi" && $price == "su:Moderado") {
-            echo '<pre>final searchPlacesOnly con Padre restaurante' . var_export($cat, true) . '</pre>';
-            echo '<pre>' . var_export($cat, true) . '</pre>';
-            echo '<pre>' . var_export($music, true) . '</pre>';
-            echo '<pre>' . var_export($price, true) . '</pre>';
-            echo '<pre>' . var_export($price, true) . '</pre>';
-            // echo '<pre>' . var_export($all_POI, true) . '</pre>';
-
-        }*/
 
         return $all_POI;
     }
@@ -604,7 +620,6 @@ class TstOperation
         // echo '<pre>' . var_export($visited, true) . '</pre>';
         $temp_1 = array();
         foreach ($visited as $place) {
-            // echo '<pre>' . var_export($place, true) . '</pre>';
             $temp_comentario = array();
             $temp_usuario = array();
 
