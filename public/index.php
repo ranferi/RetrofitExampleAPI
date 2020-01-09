@@ -71,8 +71,8 @@ $app->post('/register', function (Request $request, Response $response) {
         $nombre = $request_data['nombre'] ?: '';
         $apellido_paterno = $request_data['apellido_paterno'] ?: '';
         $apellido_materno = $request_data['apellido_materno'] ?: '';
-
-        $tst = new TstOperation();
+        $data = $this->get("data");
+        $tst = new TstOperation($data);
 
         $response_data = array();
 
@@ -105,8 +105,8 @@ $app->post('/login', function (Request $request, Response $response) {
         $request_data = $request->getParsedBody();
         $email = $request_data['email'];
         $password = $request_data['password'];
-
-        $tst = new TstOperation();
+        $data = $this->get("data");
+        $tst = new TstOperation($data);
 
         $response_data = array();
 
@@ -129,7 +129,8 @@ $app->post('/login', function (Request $request, Response $response) {
  * Se obtienen todos lo usuarios
  */
 $app->get('/users', function (Request $request, Response $response) {
-    $tst = new TstOperation();
+    $data = $this->get("data");
+    $tst = new TstOperation($data);
     $users = $tst->getAllUsers();
     return $response->withJson(array("users" => $users));
 });
@@ -138,7 +139,8 @@ $app->get('/users', function (Request $request, Response $response) {
  * Muestra una lista con todos los sitios
  */
 $app->get('/list', function (Request $request, Response $response) {
-    $tst = new TstOperation();
+    $data = $this->get("data");
+    $tst = new TstOperation($data);
     $places = $tst->getAllPoints();
     return $response->withJson(array("places" => $places));
 });
@@ -149,6 +151,7 @@ $app->get('/list', function (Request $request, Response $response) {
 $app->post('/update/{id}', function (Request $request, Response $response) {
     $params = isTheseParametersAvailable(array('usuario', 'email', 'password'));
     if (!$params["error"]) {
+        $data = $this->get("data");
         $id = $request->getAttribute('id');
         $request_data = $request->getParsedBody();
         $usuario = $request_data['usuario'];
@@ -158,7 +161,7 @@ $app->post('/update/{id}', function (Request $request, Response $response) {
         $apellido_paterno = $request_data['apellido_paterno'] ?: '';
         $apellido_materno = $request_data['apellido_materno'] ?: '';
 
-        $tst = new TstOperation();
+        $tst = new TstOperation($data);
         $response_data = array();
 
         if ($tst->updateProfile($id, $usuario, $email, $password, $nombre, $apellido_paterno, $apellido_materno)) {
@@ -218,7 +221,8 @@ $app->post('/search', function (Request $request, Response $response) {
  */
 $app->get('/visited/{id}', function (Request $request, Response $response) {
     $id = $request->getAttribute('id');
-    $tst = new TstOperation();
+    $data = $this->get("data");
+    $tst = new TstOperation($data);
     $users = $tst->getAllVisitedPlacesByUser($id);
     return $response->withJson(array("users" => $users));
 });
@@ -235,8 +239,8 @@ $app->post('/opinion/{id}', function (Request $request, Response $response) {
         $liked = $request_data['gusto'];
         $price = $request_data['precio'];
         $comment = $request_data['comentario'];
-
-        $tst = new TstOperation();
+        $data = $this->get("data");
+        $tst = new TstOperation($data);
         $response_data = array();
 
         $c = array(0 => $price, 1 => $comment);
