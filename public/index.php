@@ -46,6 +46,11 @@ require_once '../includes/TstOperation.php';
 $settings = require __DIR__ . '/../src/settings.php';
 $app = new \Slim\App($settings);
 require __DIR__ . '/../src/dependencies.php';
+$container = $app->getContainer();
+$container['view'] = function ($container) {
+    return new \Slim\Views\PhpRenderer(__DIR__ . '/../templates/');
+};
+
 
 /***
  * Añade un comentario un comentario antes de clasificar
@@ -330,7 +335,41 @@ $app->get('/nlp', function (Request $request, Response $response) {
     // ---------- Clasificación ----------------
     $cls = new MultinomialNBClassifier($ff, $model);
     $correct = 0;
-    foreach ($testing as $d) {
+
+/*    echo   '<table class="table">
+                <thead align="left" style="display: table-header-group">
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Comentario</th>
+                        <th scope="col">Clase</th>
+                        <th scope="col">Predicción</th>
+                    </tr>
+                </thead>
+                <tbody>';
+    $i = 0;
+    foreach ($testing as $d) :
+        $i++;
+        echo '<tr class="item_row">' ;
+        $prediction = $cls->classify(
+            array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
+            new TokensDocument(
+                $tok->tokenize($d[1]) // el documento
+            )
+        );
+        echo '<th scope="row">' . strval($i) . '</th>';
+        echo '<td>' .  $d[1] . '</td>';
+        echo '<td>' .  $d[0] . '</td>';
+        echo '<td>' .  $prediction . '</td>';
+        echo '</tr>';
+        if ($prediction == $d[0])
+            $correct++;
+    endforeach;
+
+echo '</tbody>';
+echo '</table>';
+    printf("Precisión: %.2f\n", 100 * $correct / count($testing));*/
+
+/*    foreach ($testing as $d) {
         // predice si es caro, muy caro, moderado, barato
         $prediction = $cls->classify(
             array('Caro', 'MuyCaro', 'Moderado', 'Barato'), // todas las posibles clases
@@ -338,15 +377,19 @@ $app->get('/nlp', function (Request $request, Response $response) {
                 $tok->tokenize($d[1]) // el documento
             )
         );
-        printf("precio %s", $d[0]);
-        printf("comentario %s\n\ ", $d[1]);
-        printf("!!!Prediccion %s\n\n", $prediction);
+        printf("Precio %s", $d[0]);
+        printf("Comentario %s\n\ ", $d[1]);
+        printf("Prediccion %s\n\n", $prediction);
         if ($prediction == $d[0])
             $correct++;
     }
-    printf("Accuracy: %.2f\n", 100 * $correct / count($testing));
+    printf("Precisión: %.2f\n", 100 * $correct / count($testing));*/
+    return $this->view->render($response, 'nlp.php', [
+        'cls' => $cls,
+        'testing' => $testing,
+        'tok' => $tok
+    ]);
 
-    return true;
 });
 
 /*****
