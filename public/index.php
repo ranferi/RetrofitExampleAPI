@@ -315,12 +315,14 @@ $app->get('/nlp', function (Request $request, Response $response) {
         array('Caro', 'Muy bonito lugar. La comida muy buena pero un poco cara. El ambiente agradable')
     );
 
+    $data = $this->get("data");
+
     $tset = new TrainingSet(); // contiene los docs para entrenar
     $tok = new WhitespaceTokenizer(); // se separan en tokens
     $ff = new DataAsFeatures(); // detalles en los documentos
 
     // ---------- Entrenamiento  ----------------
-    foreach ($training as $d) {
+    foreach ($data->getData() as $d) {
         $tset->addDocument(
             $d[0], // clase
             new TokensDocument(
@@ -387,7 +389,8 @@ echo '</table>';
     return $this->view->render($response, 'nlp.php', [
         'cls' => $cls,
         'testing' => $testing,
-        'tok' => $tok
+        'tok' => $tok,
+        'data' => $data->getData()
     ]);
 
 });

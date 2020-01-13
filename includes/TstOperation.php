@@ -365,8 +365,7 @@ class TstOperation
         return $result;
     }
 
-    function similarityPlaces($places, $data, $price_class, $res_count, $max_similarity)
-    {
+    function similarityPlaces($places, $data, $price_class, $res_count, $max_similarity) {
         $similar = 0;
         foreach ($places as &$place) {
             $comments = $place['comentarios'];
@@ -396,8 +395,7 @@ class TstOperation
      * @param null $music
      * @return array
      */
-    function searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance = null, $preferences = false, $music = null)
-    {
+    function searchWithExtendedCats($selected_cat, $price, $lat_user, $long_user, $id, $distance = null, $preferences = false, $music = null) {
         $result = array();
         $temp1 = $this->searchWithChildCat($selected_cat, $price, $lat_user, $long_user, $id, $preferences, $distance, $music);
         $temp2 = $this->searchWithParentCat($selected_cat, $price, $lat_user, $long_user, $id, $preferences, $distance, $music);
@@ -1279,5 +1277,7 @@ class TstOperation
     {
         return ($obj_a["similitud"] - $obj_b["similitud"]);
     }
+
+
 
 }

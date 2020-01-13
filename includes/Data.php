@@ -38,13 +38,46 @@ class Data
     private $ff = null;
     private $model = null;
     private $cls = null;
+    private $data = null;
 
     private function __construct() {
+
+        EasyRdf_Namespace::set('su', 'http://www.semanticweb.org/ranferi/ontologies/2018/9/ssrsi_onto#');
+        EasyRdf_Namespace::set('rdf', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#');
+        EasyRdf_Namespace::set('rdfs', 'http://www.w3.org/2000/01/rdf-schema#');
+        EasyRdf_Namespace::set('owl', 'http://www.w3.org/2002/07/owl#');
+
+        $config = array("timeout" => 500, "maxredirects" => 6);
+        EasyRdf_Http::setDefaultHttpClient(
+            $this->client = new EasyRdf_Http_Client(null, $config)
+        );
+
+        $this->gs = new EasyRdf_GraphStore('http://localhost:3030/repositories/SSRSIP/rdf-graphs/service');
+
+        $this->endpoint = new EasyRdf_Sparql_Client("http://localhost:3030/repositories/SSRSIP",
+            "http://localhost:3030/repositories/SSRSIP/statements");
+        $comments = $this->endpoint->query("
+        SELECT  ?precio ?comentario
+        WHERE {
+            ?s su:visito ?a . 
+            ?a su:sitioVisitado ?sitio .
+            ?a su:daCalificacionPrecio/su:calificacionDeUsuarioPrecio ?precio .
+            ?a su:dejaComentario ?c . 
+            ?c su:conComentario ?comentario 
+        }");
+
+        $comment_class = array();
+        foreach ($comments as $comment) {
+            array_push($comment_class, array(str_replace("su:","",$comment->precio->shorten()), $comment->comentario->getValue()) );
+        }
+
         $this->tset = new TrainingSet();
         $this->tok = new WhitespaceTokenizer();
         $this->ff = new DataAsFeatures();
         $this->model = new FeatureBasedNB();
-        $this->training($this->training_data);
+        $this->training_data = array_merge($this->training_data, $comment_class);
+
+        $this->training($this->training_data );
         $this->cls = new MultinomialNBClassifier($this->ff, $this->model);
     }
 
@@ -88,4 +121,9 @@ class Data
         // echo '<pre>' . var_export($this->training_data, true) . '</pre>';
         $this->training($this->training_data);
     }
+
+    public function getData() {
+        return $this->training_data;
+    }
+
 }
